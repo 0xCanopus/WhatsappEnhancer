@@ -295,6 +295,11 @@
     <string name="hide_locked_chats_sum">Hide archived chats, view them by holding WhatsApp title on home screen</string>
     <string name="msg_text_status_not_downloadable">Text status is not downloadable!</string>
     <string name="failed_save_directory">Unable to save files in this folder, select another location</string>
+    <string name="folder_picker_title">Choose Output Folder</string>
+    <string name="folder_picker_description">Select where call recordings should be stored. The system folder picker is safer and more reliable than the old local browser.</string>
+    <string name="folder_picker_current">Current folder: %1$s</string>
+    <string name="folder_picker_action">Open Folder Picker</string>
+    <string name="failed_open_folder_picker">Unable to open the folder picker right now</string>
     <string name="unable_to_read_this_file">Unable to read this file</string>
     <string name="disabled">Disabled</string>
     <string name="share_as_status">Share as Status</string>
@@ -347,6 +352,7 @@
     <string name="error_image_name">Name must end with .png</string>
     <string name="imported_as">"Imported as "</string>
     <string name="save">Save</string>
+    <string name="clear_selection">Clear Selection</string>
     <string name="import_image">Import Image</string>
     <string name="export_as_zip">Export as zip</string>
     <string name="clear">Clear</string>
@@ -356,6 +362,7 @@
     <string name="theme_manager">Theme Manager</string>
     <string name="manage_theme_sum">Manage themes using CSS for WhatsApp</string>
     <string name="grant_permission">Please, grant permissions to read images and read external storage</string>
+    <string name="grant_contacts_permission">Please grant contacts permission to select contacts</string>
     <string name="one_row">One Row</string>
     <string name="two_row">Two row</string>
     <string name="expiration">(Expiration: %s)</string>

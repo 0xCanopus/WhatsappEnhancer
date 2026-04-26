@@ -1,6 +1,4 @@
-[Fixed]
-- Fixed Home Screen crashing in WA Enhancer General Section
-- Fixed slow scrolling in individual chats
+[Added]
+- Call Recording Restored in better way
 
-[Improved]
-- Optimized startup performance 
+Note: It is not stable and may have bug of one side audio based on device.
