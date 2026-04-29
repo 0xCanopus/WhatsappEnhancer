@@ -17,7 +17,7 @@
     <string name="hidestatusview_sum">View statuses without users knowing</string>
     <string name="hideread">Hide Blue Ticks</string>
     <string name="hideread_sum">View messages within conversation screen without users knowing</string>
-    <string name="perso">Customization</string>
+    <string name="perso">Styles</string>
     <string name="segundosnahora">Seconds on Timestamp</string>
     <string name="segundosnahora_sum">Show seconds next to any timestamp in the WhatsApp app</string>
     <string name="textonahora">Text next to Timestamp</string>
