@@ -1,3 +1,9 @@
+[Added]
+- Added activity to view logs for WA/WB [Experimental]
+
 [Improvements]
-- Updated app icon
-- Fixed names across the app
+- Improved the UI and performance
+
+[Fixes]
+- Fixed Error: CustomView - No RuleFactory implementation registered!
+- Enhanced XposedBridge compatibility by including context information when logging, resolving potential NullPointerExceptions
