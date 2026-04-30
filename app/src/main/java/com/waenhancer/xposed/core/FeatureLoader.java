@@ -108,6 +108,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
 import de.robv.android.xposed.XC_MethodHook;
+import android.content.SharedPreferences;
 import de.robv.android.xposed.XSharedPreferences;
 import de.robv.android.xposed.XposedBridge;
 import de.robv.android.xposed.XposedHelpers;
@@ -120,11 +121,11 @@ public class FeatureLoader {
     public final static String PACKAGE_WPP = "com.whatsapp";
     public final static String PACKAGE_BUSINESS = "com.whatsapp.w4b";
 
-    private static final ArrayList<ErrorItem> list = new ArrayList<>();
+    private static final List<ErrorItem> list = java.util.Collections.synchronizedList(new ArrayList<>());
     private static List<String> supportedVersions;
     private static String currentVersion;
 
-    public static void start(@NonNull ClassLoader loader, @NonNull XSharedPreferences pref, String sourceDir) {
+    public static void start(@NonNull ClassLoader loader, @NonNull android.content.SharedPreferences pref, String sourceDir) {
 
         Feature.DEBUG = pref.getBoolean("enablelogs", true);
         Utils.xprefs = pref;
@@ -138,7 +139,7 @@ public class FeatureLoader {
                         XposedBridge.log("[WAE] callApplicationOnCreate for: " + mApp.getPackageName() + " (process: " + processName + ")");
 
                         if (!Objects.equals(processName, mApp.getPackageName())) {
-                            XposedBridge.log("[WAE] Skipping secondary process: " + processName);
+                            XposedBridge.log("[WAE] Skipping secondary process. Expected: " + mApp.getPackageName() + ", Actual: " + processName);
                             return;
                         }
 
@@ -149,7 +150,16 @@ public class FeatureLoader {
                         }
 
                         PackageManager packageManager = mApp.getPackageManager();
-                        pref.registerOnSharedPreferenceChangeListener((sharedPreferences, s) -> pref.reload());
+                        
+                        // Initialize ProviderSharedPreferences for live settings sync
+                        var localBridgePrefs = mApp.getSharedPreferences("wae_bridge_prefs", Context.MODE_PRIVATE);
+                        var providerPrefs = new com.waenhancer.xposed.bridge.client.ProviderSharedPreferences(mApp, localBridgePrefs, pref);
+                        Utils.xprefs = providerPrefs;
+                        XposedBridge.log("[WAE] ProviderSharedPreferences initialized with " + providerPrefs.getAll().size() + " preferences");
+                        
+                        if (pref instanceof XSharedPreferences) {
+                            ((XSharedPreferences) pref).registerOnSharedPreferenceChangeListener((sharedPreferences, s) -> ((XSharedPreferences) pref).reload());
+                        }
                         PackageInfo packageInfo = packageManager.getPackageInfo(mApp.getPackageName(), 0);
 
                         XposedBridge.log(packageInfo.versionName);
@@ -203,9 +213,9 @@ public class FeatureLoader {
                                     throw new Exception(sb);
                                 }
                             }
-                            XposedBridge.log("[WAE] Initializing components and plugins...");
-                            initComponents(loader, pref);
-                            plugins(loader, pref, packageInfo.versionName);
+                            XposedBridge.log("[WAE] Initializing components and plugins using ProviderSharedPreferences...");
+                            initComponents(loader, providerPrefs);
+                            plugins(loader, providerPrefs, packageInfo.versionName);
                             sendEnabledBroadcast(mApp);
                             // XposedHelpers.setStaticIntField(XposedHelpers.findClass("com.whatsapp.infra.logging.Log",
                             // loader), "level", 5);
@@ -284,7 +294,7 @@ public class FeatureLoader {
         });
     }
 
-    private static void initComponents(ClassLoader loader, XSharedPreferences pref) throws Exception {
+    private static void initComponents(ClassLoader loader, android.content.SharedPreferences pref) throws Exception {
         FMessageWpp.initialize(loader);
         WppCore.Initialize(loader, pref);
         DesignUtils.setPrefs(pref);
@@ -397,7 +407,7 @@ public class FeatureLoader {
         }
     }
 
-    private static void plugins(@NonNull ClassLoader loader, @NonNull XSharedPreferences pref,
+    private static void plugins(@NonNull ClassLoader loader, @NonNull android.content.SharedPreferences pref,
             @NonNull String versionWpp) throws Exception {
 
         var classes = new Class<?>[] {
@@ -467,12 +477,12 @@ public class FeatureLoader {
         };
         XposedBridge.log("Loading Plugins");
         var executorService = Executors.newWorkStealingPool(Math.min(Runtime.getRuntime().availableProcessors(), 4));
-        var times = new ArrayList<String>();
+        var times = java.util.Collections.synchronizedList(new ArrayList<String>());
         for (var classe : classes) {
             CompletableFuture.runAsync(() -> {
                 var timemillis = System.currentTimeMillis();
                 try {
-                    var constructor = classe.getConstructor(ClassLoader.class, XSharedPreferences.class);
+                    var constructor = classe.getConstructor(ClassLoader.class, android.content.SharedPreferences.class);
                     var plugin = (Feature) constructor.newInstance(loader, pref);
                     plugin.doHook();
                 } catch (Throwable e) {

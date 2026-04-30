@@ -323,7 +323,9 @@ public class UpdateChecker implements Runnable {
     private String getReleaseChannelPreference() {
         // First try to get it from WaEnhancer's XSharedPreferences (available in Xposed context)
         if (com.waenhancer.xposed.core.WppCore.waePrefs != null) {
-            com.waenhancer.xposed.core.WppCore.waePrefs.reload();
+            if (com.waenhancer.xposed.core.WppCore.waePrefs instanceof de.robv.android.xposed.XSharedPreferences) {
+                ((de.robv.android.xposed.XSharedPreferences) com.waenhancer.xposed.core.WppCore.waePrefs).reload();
+            }
             String channel = com.waenhancer.xposed.core.WppCore.waePrefs.getString("release_channel", "stable");
             writeDebugLog("[UpdateChecker] Channel from waePrefs: " + channel);
             return channel;

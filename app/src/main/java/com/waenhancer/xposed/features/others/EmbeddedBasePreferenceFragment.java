@@ -57,7 +57,7 @@ public abstract class EmbeddedBasePreferenceFragment extends PreferenceFragmentC
     @Override
     public void onCreatePreferences(@Nullable Bundle savedInstanceState, @Nullable String rootKey) {
         var localPrefs = requireContext().getSharedPreferences(PREFS_NAME, android.content.Context.MODE_PRIVATE);
-        mPrefs = new ProviderSharedPreferences(requireContext(), localPrefs);
+        mPrefs = new ProviderSharedPreferences(requireContext(), localPrefs, com.waenhancer.WppXposed.getPref());
 
         getPreferenceManager().setPreferenceDataStore(new androidx.preference.PreferenceDataStore() {
             @Override

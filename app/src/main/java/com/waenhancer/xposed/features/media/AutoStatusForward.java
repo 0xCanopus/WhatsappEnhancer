@@ -28,6 +28,7 @@ import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
 import de.robv.android.xposed.XC_MethodHook;
+import android.content.SharedPreferences;
 import de.robv.android.xposed.XSharedPreferences;
 import de.robv.android.xposed.XposedBridge;
 import de.robv.android.xposed.XposedHelpers;
@@ -45,7 +46,7 @@ public class AutoStatusForward extends Feature {
     private static Method getQuotedKeyMethodCache = null;
     private static boolean scannedForQuoted = false;
 
-    public AutoStatusForward(ClassLoader loader, XSharedPreferences preferences) {
+    public AutoStatusForward(ClassLoader loader, SharedPreferences preferences) {
         super(loader, preferences);
     }
 
