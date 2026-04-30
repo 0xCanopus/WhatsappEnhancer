@@ -46,14 +46,7 @@ public class LogManager {
         }
     }
 
-    public static void startService(Context context) {
-        Intent intent = new Intent(context, LogService.class);
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            context.startForegroundService(intent);
-        } else {
-            context.startService(intent);
-        }
-    }
+
 
     public static void stopService(Context context) {
         Intent intent = new Intent(context, LogService.class);

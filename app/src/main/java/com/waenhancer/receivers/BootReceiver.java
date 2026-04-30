@@ -14,14 +14,7 @@ public class BootReceiver extends BroadcastReceiver {
         if (Intent.ACTION_BOOT_COMPLETED.equals(action) || 
             "android.intent.action.QUICKBOOT_POWERON".equals(action)) {
             
-            if (LogManager.isLoggingEnabled(context)) {
-                Intent serviceIntent = new Intent(context, LogService.class);
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                    context.startForegroundService(serviceIntent);
-                } else {
-                    context.startService(serviceIntent);
-                }
-            }
+
         }
     }
 }
