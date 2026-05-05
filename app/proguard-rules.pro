@@ -49,6 +49,12 @@
 -keep class org.bouncycastle.** { *; }
 -dontwarn org.bouncycastle.**
 
+# Support for jStyleParser
+-keep class cz.vutbr.web.css.** { *; }
+-keep class org.w3c.css.sac.** { *; }
+-dontwarn cz.vutbr.web.css.**
+-dontwarn org.w3c.css.sac.**
+
 # OkHttp/Okio
 -keep class okhttp3.** { *; }
 -keep class okio.** { *; }
