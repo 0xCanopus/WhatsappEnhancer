@@ -65,7 +65,7 @@ public class ChangelogActivity extends BaseActivity {
         if (getSupportActionBar() != null) {
             getSupportActionBar().setDisplayHomeAsUpEnabled(true);
         }
-        toolbar.setNavigationOnClickListener(v -> navigateToHome());
+        toolbar.setNavigationOnClickListener(v -> onBackPressed());
 
         recyclerView = findViewById(R.id.changelog_recycler);
         // shimmerFrameLayout = findViewById(R.id.shimmer_view_container);
@@ -125,7 +125,7 @@ public class ChangelogActivity extends BaseActivity {
     public boolean onOptionsItemSelected(@NonNull android.view.MenuItem item) {
         if (item.getItemId() == android.R.id.home) {
             // navigateToHome();
-            finish();
+            onBackPressed();
             return true;
         }
         if (item.getItemId() == R.id.action_update_settings) {

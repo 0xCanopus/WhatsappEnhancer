@@ -90,8 +90,14 @@ public class UnobfuscatorCache {
                 int toastResId = R.string.starting_cache;
                 try {
                     if (XResManager.moduleResources != null) {
-                        String message = XResManager.moduleResources.getString(toastResId);
-                        Utils.showToast(message, Toast.LENGTH_LONG);
+                        boolean showToast = true;
+                        if (Utils.xprefs != null) {
+                            showToast = Utils.xprefs.getBoolean("show_hook_toast", true);
+                        }
+                        if (showToast) {
+                            String message = XResManager.moduleResources.getString(toastResId);
+                            Utils.showToast(message, Toast.LENGTH_LONG);
+                        }
                     }
                 } catch (Exception ignored) {
                 }

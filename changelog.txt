@@ -1,7 +1,9 @@
 [Added]
+- Option to Enable/Disable Hook Toasts
 
 [Improvements]
 - Optimize: Fixed app slow down / lagging issue on some devices.
 
 
 [Fixes]
+- Fixed Resources$NotFoundException crashes
