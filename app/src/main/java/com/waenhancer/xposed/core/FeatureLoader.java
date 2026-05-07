@@ -161,11 +161,13 @@ public class FeatureLoader {
                     protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
                         mApp = (Application) param.args[0];
                         
-                        // Show initial feedback immediately
-                        new Handler(Looper.getMainLooper()).post(() -> {
-                            hookingToast = Toast.makeText(mApp, "Hooking in to WhatsApp cache. Please wait.", Toast.LENGTH_LONG);
-                            hookingToast.show();
-                        });
+                        // Show initial feedback immediately (if enabled)
+                        if (pref.getBoolean("show_hook_toast", true)) {
+                            new Handler(Looper.getMainLooper()).post(() -> {
+                                hookingToast = Toast.makeText(mApp, "Hooking in to WhatsApp cache. Please wait.", Toast.LENGTH_LONG);
+                                hookingToast.show();
+                            });
+                        }
 
                         String processName = Application.getProcessName();
                         XposedBridge.log("[WAE] callApplicationOnCreate for: " + mApp.getPackageName() + " (process: " + processName + ")");
@@ -525,6 +527,12 @@ public class FeatureLoader {
     public static void triggerLoadedFeedback() {
         if (!needsSnackbar || loadedTimeStr == null || WppCore.mCurrentActivity == null) return;
         
+        // Only show feedback if the user has enabled hook toasts
+        if (Utils.xprefs != null && !Utils.xprefs.getBoolean("show_hook_toast", true)) {
+            needsSnackbar = false;
+            return;
+        }
+        
         // If still loading in background, we might want to wait or show a dialog
         // But for now, we only trigger if needsSnackbar is true (which is set after background load)
         needsSnackbar = false;
@@ -533,6 +541,9 @@ public class FeatureLoader {
 
     public static void checkLoading(Activity activity) {
         if (isLoaded || activity == null) return;
+        
+        // Gate checkLoading behind the show_hook_toast preference
+        if (Utils.xprefs != null && !Utils.xprefs.getBoolean("show_hook_toast", true)) return;
         
         new Handler(Looper.getMainLooper()).post(() -> {
             try {
