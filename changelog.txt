@@ -4,5 +4,3 @@
 [Improvements]
 - Improved IG Style Stories
 - WaEnhancerX Changelog Screen improved
-
-[Fixes]
