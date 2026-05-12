@@ -51,6 +51,11 @@ import java.util.Objects;
 import rikka.core.util.IOUtils;
 
 import java.io.File;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.Response;
 
 public class HomeFragment extends BaseFragment {
     private static final String RELEASES_URL = "https://github.com/mubashardev/WaEnhancerX/releases";
@@ -271,6 +276,12 @@ public class HomeFragment extends BaseFragment {
             startActivity(intent);
         });
 
+        binding.btnWhatsComingNext.setOnClickListener(v -> {
+            animateClick(v);
+            Intent intent = new Intent(requireContext(), com.waenhancer.activities.WhatsComingNextActivity.class);
+            startActivity(intent);
+        });
+
         setupReleaseChannelSelector();
         setupUpdateBanner();
         startCardAnimations();
@@ -347,6 +358,7 @@ public class HomeFragment extends BaseFragment {
         syncReleaseChannelToInstalled();
         checkForUpdates();
         checkStateWpp(requireActivity());
+        checkWhatsComingNext();
     }
 
     @SuppressLint("StringFormatInvalid")
@@ -830,6 +842,60 @@ public class HomeFragment extends BaseFragment {
             binding.updateNotificationCard.startAnimation(anim);
         });
         java.util.concurrent.CompletableFuture.runAsync(updateChecker);
+    }
+
+    private void checkWhatsComingNext() {
+        CompletableFuture.runAsync(() -> {
+            OkHttpClient client = new OkHttpClient.Builder()
+                    .connectTimeout(10, TimeUnit.SECONDS)
+                    .build();
+
+            Request request = new Request.Builder()
+                    .url("https://raw.githubusercontent.com/mubashardev/WaEnhancerX/refs/heads/beta/changelog.txt")
+                    .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
+                    .build();
+
+            try (Response response = client.newCall(request).execute()) {
+                if (response.isSuccessful() && response.body() != null) {
+                    String remoteContent = response.body().string().trim();
+
+                    // Read local asset content
+                    String localContent = "";
+                    try (java.io.InputStream is = requireContext().getAssets().open("changelog.txt")) {
+                        java.io.ByteArrayOutputStream buffer = new java.io.ByteArrayOutputStream();
+                        byte[] data = new byte[4096];
+                        int nRead;
+                        while ((nRead = is.read(data, 0, data.length)) != -1) {
+                            buffer.write(data, 0, nRead);
+                        }
+                        localContent = buffer.toString("UTF-8").trim();
+                    } catch (Exception e) {
+                        Log.e("HomeFragment", "Failed to read local changelog.txt", e);
+                    }
+
+                    final String finalLocal = localContent;
+                    final String finalRemote = remoteContent;
+
+                    if (getActivity() != null) {
+                        getActivity().runOnUiThread(() -> {
+                            if (binding == null) return;
+                            if (finalRemote.isEmpty()) {
+                                binding.btnWhatsComingNext.setVisibility(View.GONE);
+                                return;
+                            }
+                            // If the remote content is different from the local asset, show the chip button
+                            if (!finalRemote.equals(finalLocal)) {
+                                binding.btnWhatsComingNext.setVisibility(View.VISIBLE);
+                            } else {
+                                binding.btnWhatsComingNext.setVisibility(View.GONE);
+                            }
+                        });
+                    }
+                }
+            } catch (Exception e) {
+                Log.e("HomeFragment", "Error checking what's coming next", e);
+            }
+        });
     }
 
     @Override

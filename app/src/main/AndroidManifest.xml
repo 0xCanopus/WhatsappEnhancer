@@ -173,6 +173,12 @@
             android:parentActivityName=".activities.MainActivity" />
 
         <activity
+            android:name=".activities.WhatsComingNextActivity"
+            android:theme="@style/AppTheme"
+            android:label="What's Coming Next"
+            android:parentActivityName=".activities.MainActivity" />
+
+        <activity
             android:name=".activities.UpdateSettingsActivity"
             android:theme="@style/AppTheme"
             android:label="@string/update_settings"

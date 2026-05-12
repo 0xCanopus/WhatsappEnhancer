@@ -285,3 +285,13 @@ afterEvaluate {
         }
     }
 }
+
+val copyChangelog by tasks.registering(Copy::class) {
+    from(rootProject.file("changelog.txt"))
+    into(projectDir.resolve("src/main/assets"))
+}
+
+tasks.named("preBuild") {
+    dependsOn(copyChangelog)
+}
+
