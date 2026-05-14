@@ -375,16 +375,16 @@ public class CustomView extends Feature {
             if (root == null) {
                 return;
             }
-            long perfStart = PerfLogger.start();
-            processedViews.clear();
-            applyRulesRecursively(root);
+            
+            // Move entire scan to post() to ensure we don't block the initial Activity.onCreate()
+            // which is critical for smooth tab swiping in HomeActivity.
             root.post(() -> {
                 long postPerfStart = PerfLogger.start();
+                // We clear here because it's a new activity instance
                 processedViews.clear();
                 applyRulesRecursively(root);
                 PerfLogger.end("CustomView.createdPost." + activity.getClass().getSimpleName(), postPerfStart, 1);
             });
-            PerfLogger.end("CustomView.created." + activity.getClass().getSimpleName(), perfStart, 1);
         });
 
         final int VISIBILITY_MASK = 0x0000000C;

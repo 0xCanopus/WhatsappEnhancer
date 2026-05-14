@@ -122,6 +122,20 @@ public class CustomPrivacy extends Feature {
         }
 
         if (type == 0) return;
+
+        var icon = DesignUtils.resizeDrawable(DesignUtils.getDrawable(R.drawable.ic_privacy), Utils.dipToPixels(24), Utils.dipToPixels(24));
+        if (icon != null) icon.setTint(0xff8696a0);
+        MenuHome.menuItems.add((menu, activity) -> {
+            if (menu.findItem(MENU_ID_CUSTOM_PRIVACY) != null) return;
+            String title = com.waenhancer.xposed.core.FeatureLoader.getModuleString(com.waenhancer.R.string.custom_privacy, "Custom Privacy");
+            if (title == null || title.isEmpty()) {
+                title = "Custom Privacy";
+            }
+            menu.add(0, MENU_ID_CUSTOM_PRIVACY, 0, title).setIcon(icon).setOnMenuItemClickListener(item -> {
+                showCustomPrivacyList(activity, ContactInfoActivityClass, GroupInfoActivityClass);
+                return true;
+            });
+        });
     }
 
 
