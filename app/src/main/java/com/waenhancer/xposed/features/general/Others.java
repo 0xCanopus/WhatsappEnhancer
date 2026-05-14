@@ -365,6 +365,8 @@ public class Others extends Feature {
             XposedHelpers.findAndHookMethod(View.class, "onAttachedToWindow", new XC_MethodHook() {
                 @Override
                 protected void afterHookedMethod(MethodHookParam param) throws Throwable {
+                    if (HIDDEN_VIEW_IDS.isEmpty() && FORCE_HIDDEN_VIEWS.isEmpty()) return;
+                    
                     View view = (View) param.thisObject;
                     int id = view.getId();
                     if ((id > 0 && HIDDEN_VIEW_IDS.contains(id)) || FORCE_HIDDEN_VIEWS.containsKey(view)) {
@@ -376,6 +378,8 @@ public class Others extends Feature {
             XposedHelpers.findAndHookMethod(View.class, "setVisibility", int.class, new XC_MethodHook() {
                 @Override
                 protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
+                    if (HIDDEN_VIEW_IDS.isEmpty() && FORCE_HIDDEN_VIEWS.isEmpty()) return;
+
                     View view = (View) param.thisObject;
                     int id = view.getId();
                     if (((id > 0 && HIDDEN_VIEW_IDS.contains(id)) || FORCE_HIDDEN_VIEWS.containsKey(view)) 
@@ -830,7 +834,7 @@ public class Others extends Feature {
                     }
                 }
 
-                if (anim != null) {
+                if (anim != null && view.getAnimation() == null) {
                     view.startAnimation(anim);
                 }
             }

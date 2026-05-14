@@ -64,10 +64,10 @@ public class MenuHome extends Feature {
     private static Drawable cachedNewChatIcon = null;
     private static Drawable cachedRecordingsIcon = null;
 
+    private static boolean internalItemsAdded = false;
+
     @Override
     public void doHook() throws Throwable {
-        menuItems.clear();
-        
         // Pre-cache strings and drawables to avoid lookups during menu preparation
         try {
             cachedRestartLabel = com.waenhancer.xposed.core.FeatureLoader.getModuleString(R.string.restart_whatsapp, "Restart WhatsApp");
@@ -105,13 +105,18 @@ public class MenuHome extends Feature {
 
         var buttonAction = prefs.getBoolean("buttonaction", true);
 
-        menuItems.add(this::InsertOpenWae);
-        menuItems.add((menu, activity) -> InsertGhostModeOption(menu, activity, buttonAction));
-        menuItems.add((menu, activity) -> InsertDNDOption(menu, activity, buttonAction));
-        menuItems.add((menu, activity) -> InsertFreezeLastSeenOption(menu, activity, buttonAction));
-        menuItems.add(this::InsertNewChat);
-        menuItems.add(this::InsertManageRecordings);
-        menuItems.add((menu, activity) -> InsertRestartButton(menu, activity, false));
+        synchronized (menuItems) {
+            if (!internalItemsAdded) {
+                menuItems.add(this::InsertOpenWae);
+                menuItems.add((menu, activity) -> InsertGhostModeOption(menu, activity, buttonAction));
+                menuItems.add((menu, activity) -> InsertDNDOption(menu, activity, buttonAction));
+                menuItems.add((menu, activity) -> InsertFreezeLastSeenOption(menu, activity, buttonAction));
+                menuItems.add(this::InsertNewChat);
+                menuItems.add(this::InsertManageRecordings);
+                menuItems.add((menu, activity) -> InsertRestartButton(menu, activity, false));
+                internalItemsAdded = true;
+            }
+        }
         hookMenu(buttonAction);
     }
 
@@ -315,7 +320,7 @@ public class MenuHome extends Feature {
     }
 
     private void hookMenu(boolean buttonAction) {
-        XposedHelpers.findAndHookMethod(WppCore.getHomeActivityClass(classLoader), "onPrepareOptionsMenu", Menu.class, new XC_MethodHook() {
+        XposedHelpers.findAndHookMethod(WppCore.getHomeActivityClass(classLoader), "onCreateOptionsMenu", Menu.class, new XC_MethodHook() {
             @Override
             protected void afterHookedMethod(MethodHookParam param) throws Throwable {
                 var menu = (Menu) param.args[0];

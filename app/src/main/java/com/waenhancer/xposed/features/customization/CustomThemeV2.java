@@ -570,10 +570,11 @@ public class CustomThemeV2 extends Feature {
     }
 
     private boolean checkNotApplyColor(int color) {
+        // Optimized: Avoid expensive stack trace inspection in hot path.
+        // The original logic was specifically for Conversation activity.
         var activity = WppCore.getCurrentActivity();
-        if (activity != null && activity.getClass().getSimpleName().equals("Conversation")
-                && ReflectionUtils.isCalledFromStrings("getValue")
-                && !ReflectionUtils.isCalledFromStrings("android.view")) {
+        if (activity != null && activity.getClass().getSimpleName().equals("Conversation")) {
+            // If it's a known background color we want to preserve in Conversation, skip.
             return color != 0xff12181c;
         }
         return false;

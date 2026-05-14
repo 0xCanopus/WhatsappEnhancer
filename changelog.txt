@@ -2,7 +2,8 @@
 - Support upto version 2.26.21 for WA/WB
 
 [Improvements]
-- Performance improvements
+- Menus improvements
+- Performance optimizations
 - Tasker com.waenhancer.MESSAGE_SENT [Under Development - Bugs Fixes ongoing]
 
 [Fixes]
