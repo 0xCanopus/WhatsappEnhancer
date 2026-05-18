@@ -418,14 +418,9 @@ public abstract class EmbeddedBasePreferenceFragment extends PreferenceFragmentC
         }
 
         Preference separateGroupsPreference = findPreference("separategroups");
-        if (mPrefs.getBoolean("separategroups", false)) {
-            runWithoutRestartBroadcast(() -> mPrefs.edit().putBoolean("separategroups", false).apply());
-        }
-        setPreferenceState("separategroups", false);
         if (separateGroupsPreference != null) {
-            separateGroupsPreference.setSummary(
-                    getString(R.string.separate_groups_sum) + "\n\n"
-                            + getString(R.string.separate_groups_disabled_wa_update));
+            separateGroupsPreference.setEnabled(true);
+            separateGroupsPreference.setSummary(getString(R.string.separate_groups_sum));
         }
 
         Preference callBlockContacts = findPreference("call_block_contacts");
@@ -462,12 +457,7 @@ public abstract class EmbeddedBasePreferenceFragment extends PreferenceFragmentC
     }
 
     private boolean isSeparateGroupSupported() {
-        try {
-            var packageInfo = requireContext().getPackageManager().getPackageInfo("com.whatsapp", 0);
-            return isVersionAtMost(packageInfo.versionName, 2, 26, 12);
-        } catch (Exception ignored) {
-            return true;
-        }
+        return true;
     }
 
     private boolean isVersionAtMost(String versionName, int major, int minor, int patch) {

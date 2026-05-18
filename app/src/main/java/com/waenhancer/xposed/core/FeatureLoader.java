@@ -41,6 +41,7 @@ import com.waenhancer.xposed.features.customization.CustomToolbar;
 import com.waenhancer.xposed.features.customization.CustomView;
 import com.waenhancer.xposed.features.customization.HideSeenView;
 import com.waenhancer.xposed.features.customization.HideTabs;
+import com.waenhancer.xposed.features.customization.SeparateGroup;
 import com.waenhancer.xposed.features.customization.IGStatus;
 import com.waenhancer.xposed.features.customization.ShowOnline;
 import com.waenhancer.xposed.features.general.AntiRevoke;
@@ -792,6 +793,7 @@ public class FeatureLoader {
                 HideSeenView.class,
                 TagMessage.class,
                 HideTabs.class,
+                SeparateGroup.class,
                 IGStatus.class,
                 LiteMode.class,
                 MediaQuality.class,

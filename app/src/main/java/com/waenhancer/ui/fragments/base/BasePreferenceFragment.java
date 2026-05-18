@@ -395,17 +395,10 @@ public abstract class BasePreferenceFragment extends PreferenceFragmentCompat
         }
         setPreferenceState("filtergroups", false); // Forced disabled
 
-        // Keep this disabled for now because the underlying WhatsApp tab hooks
-        // still cause UI instability and swipe jank on recent test builds.
         var sepPref = findPreference("separategroups");
-        if (mPrefs.getBoolean("separategroups", false)) {
-            runWithoutRestartBroadcast(() -> mPrefs.edit().putBoolean("separategroups", false).apply());
-        }
         if (sepPref != null) {
-            setPreferenceState("separategroups", false);
-            sepPref.setSummary(getString(com.waenhancer.R.string.separate_groups_sum) + "\n\n" + getString(com.waenhancer.R.string.separate_groups_disabled_wa_update));
-        } else {
-            setPreferenceState("separategroups", false);
+            sepPref.setEnabled(true);
+            sepPref.setSummary(getString(com.waenhancer.R.string.separate_groups_sum));
         }
         // Fully disable FilterGroups due to technical instability
         setPreferenceState("filtergroups", false);
@@ -440,12 +433,7 @@ public abstract class BasePreferenceFragment extends PreferenceFragmentCompat
     }
 
     private boolean isSeparateGroupSupported() {
-        try {
-            var packageInfo = requireContext().getPackageManager().getPackageInfo(FeatureLoader.PACKAGE_WPP, 0);
-            return isVersionAtMost(packageInfo.versionName, 2, 26, 12);
-        } catch (Exception ignored) {
-            return true;
-        }
+        return true;
     }
 
     private void updateGroupPref(String key, boolean supported, int supportedSummary, int unsupportedSummary) {
