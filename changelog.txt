@@ -1,11 +1,18 @@
 [Added]
-- Support upto version 2.26.21 for WA/WB
+- Support upto version 2.26.20 for WA/WB
+- Display of a pending changes list directly inside the app restart notification dialog
+- Easy settings entry point shortcut from native menus
 
 [Improvements]
-- Optimized performance
+- Modernized home screen menu styling with customizable icon or 3-dot menu toggle
+- Upgraded the settings system to use direct preferences reading for faster and more reliable configuration loading
+- Improved Group Admin info badge display and participant metadata rendering
+- Enhanced compatibility fallback system to ensure features load correctly on newer WhatsApp updates
 
 [Fixes]
-- Fixed ChatLimit Plugin error
-- Fixed ContactBlockedVerify Plugin error
-- Fixed Archived Chats activity Crashed
-- Fixed Disable Meta AI functions
+- Fixed startup crashes related to Meta AI customization
+- Fixed occasional Anti-Revoke toast display crashes
+- Fixed "View Once" media downloading icon resolution crashes
+- Fixed a layout crash when viewing media previews
+- Fixed crashes on force starting activities
+- Resolved various errors in the Chat Limit and Contact Blocked plugins
