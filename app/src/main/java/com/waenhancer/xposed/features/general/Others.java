@@ -8,7 +8,7 @@ import android.content.Intent;
 import android.os.BaseBundle;
 import android.os.Message;
 import android.os.PowerManager;
-import java.util.concurrent.CompletableFuture;
+
 import android.text.TextUtils;
 import android.view.Menu;
 import android.view.MotionEvent;
@@ -30,7 +30,7 @@ import com.waenhancer.xposed.utils.AnimationUtil;
 import com.waenhancer.xposed.utils.ReflectionUtils;
 import com.waenhancer.R;
 import com.waenhancer.xposed.utils.Utils;
-import com.waenhancer.xposed.features.others.MenuHome;
+
 
 import org.json.JSONObject;
 import org.luckypray.dexkit.query.enums.StringMatchType;
@@ -59,10 +59,14 @@ public class Others extends Feature {
     private static final String DEVICE_SOURCE_SUFFIX_FIELD = "wae_device_source_suffix";
     private static final String DEVICE_SOURCE_GUARD_FIELD = "wae_device_source_guard";
 
-    private static final java.util.Set<Integer> HIDDEN_VIEW_IDS = java.util.Collections.synchronizedSet(new java.util.HashSet<>());
-    private static final java.util.Map<Object, Boolean> FORCE_HIDDEN_VIEWS = new java.util.WeakHashMap<>();
-    private static volatile boolean viewVisibilityHooksInstalled = false;
-    private static volatile boolean drawerHookInstalled = false;
+    /**
+     * Thread-local flag to suspend property overrides during non-HomeActivity onCreate.
+     * When true, hookProps() will skip all boolean/integer property overrides,
+     * letting WhatsApp use its default values for layout initialization.
+     * This prevents "Window feature must be requested before adding content" crashes
+     * in activities like ArchivedConversationsActivity.
+     */
+    private static volatile boolean sSuspendPropOverrides = false;
 
     private static java.lang.reflect.Field cachedAbsViewField;
     private static final Set<String> dumpedMessageIds = ConcurrentHashMap.newKeySet();
@@ -95,6 +99,7 @@ public class Others extends Feature {
         var filterSeen = prefs.getBoolean("filterseen", false);
         var status_style = Integer.parseInt(prefs.getString("status_style", "1"));
         var disableMetaAI = prefs.getBoolean("metaai", false);
+        XposedBridge.log("[WAE] Others: disableMetaAI preference value = " + disableMetaAI);
         var disable_sensor_proximity = prefs.getBoolean("disable_sensor_proximity", false);
         var proximity_audios = prefs.getBoolean("proximity_audios", false);
         var showOnline = prefs.getBoolean("showonline", false);
@@ -221,7 +226,6 @@ public class Others extends Feature {
         propsInteger.put(8522, status_style);
         propsInteger.put(8521, status_style);
 
-
         hookProps();
         if (!Objects.equals(filterChats, "2")) {
             hookSearchbar(filterChats);
@@ -239,9 +243,11 @@ public class Others extends Feature {
         }
 
 
+        if (disableMetaAI) {
+            hideMetaAIFab();
+        }
         if (filter_items != null && prefs.getBoolean("custom_filters", true)) {
-            setupViewVisibilityHooks();
-            filterItems(filter_items);
+            filterItemsInHomeActivity(filter_items);
         }
 
         if (disable_defemojis) {
@@ -314,8 +320,35 @@ public class Others extends Feature {
         if (!filterSeen) {
             disableHomeFilters();
         }
-
-
+        try {
+            Class<?> conversationClass = XposedHelpers.findClass("com.whatsapp.Conversation", classLoader);
+            XposedHelpers.findAndHookMethod(conversationClass, "onResume", new XC_MethodHook() {
+                @Override
+                protected void afterHookedMethod(MethodHookParam param) throws Throwable {
+                    Activity activity = (Activity) param.thisObject;
+                    android.content.Intent intent = activity.getIntent();
+                    if (intent != null && disableMetaAI) {
+                        String jid = intent.getStringExtra("jid");
+                        boolean isMetaAi = false;
+                        if (jid != null && (jid.contains("1313555") || jid.contains("meta"))) {
+                            isMetaAi = true;
+                        }
+                        if (intent.hasExtra("bot_metrics_entrypoint") || intent.hasExtra("extra_presentation_source")) {
+                            isMetaAi = true;
+                        }
+                        
+                        if (isMetaAi) {
+                            if (!activity.isFinishing()) {
+                                activity.finish();
+                                android.widget.Toast.makeText(activity, "Meta AI functions are disabled", android.widget.Toast.LENGTH_SHORT).show();
+                            }
+                        }
+                    }
+                }
+            });
+        } catch (Throwable t) {
+            XposedBridge.log("[WAE] Failed to hook Conversation: " + t.toString());
+        }
 
     }
 
@@ -325,19 +358,32 @@ public class Others extends Feature {
         propsBoolean.put(13408, true);
 
         Class<?> filterView = Unobfuscator.loadChatFilterView(classLoader);
+        Class<?> homeClass = WppCore.getHomeActivityClass(classLoader);
+
         XposedBridge.hookAllConstructors(filterView, new XC_MethodHook() {
             @Override
             protected void afterHookedMethod(MethodHookParam param) throws Throwable {
-                var view = (View) param.thisObject;
+                // Only hide during HomeActivity — other activities may share this view class
+                View view = (View) param.thisObject;
+                Activity current = Utils.getActivityFromView(view);
+                if (current == null) {
+                    current = WppCore.getCurrentActivity();
+                }
+                if (current == null || !homeClass.isInstance(current)) return;
                 view.setVisibility(View.GONE);
             }
         });
 
-        // Avoid global View hooks on home startup: keep this scoped to chat filter views only.
         try {
             XposedHelpers.findAndHookMethod(filterView, "setVisibility", int.class, new XC_MethodHook() {
                 @Override
                 protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
+                    View view = (View) param.thisObject;
+                    Activity current = Utils.getActivityFromView(view);
+                    if (current == null) {
+                        current = WppCore.getCurrentActivity();
+                    }
+                    if (current == null || !homeClass.isInstance(current)) return;
                     if ((int) param.args[0] != View.GONE) {
                         param.args[0] = View.GONE;
                     }
@@ -350,46 +396,343 @@ public class Others extends Feature {
             XposedHelpers.findAndHookMethod(filterView, "onAttachedToWindow", new XC_MethodHook() {
                 @Override
                 protected void afterHookedMethod(MethodHookParam param) throws Throwable {
-                    ((View) param.thisObject).setVisibility(View.GONE);
+                    View view = (View) param.thisObject;
+                    Activity current = Utils.getActivityFromView(view);
+                    if (current == null) {
+                        current = WppCore.getCurrentActivity();
+                    }
+                    if (current == null || !homeClass.isInstance(current)) return;
+                    view.setVisibility(View.GONE);
                 }
             });
         } catch (Throwable ignored) {
         }
     }
 
-    private void setupViewVisibilityHooks() {
-        if (viewVisibilityHooksInstalled) return;
-        synchronized (Others.class) {
-            if (viewVisibilityHooksInstalled) return;
-            
-            XposedHelpers.findAndHookMethod(View.class, "onAttachedToWindow", new XC_MethodHook() {
-                @Override
-                protected void afterHookedMethod(MethodHookParam param) throws Throwable {
-                    if (HIDDEN_VIEW_IDS.isEmpty() && FORCE_HIDDEN_VIEWS.isEmpty()) return;
-                    
-                    View view = (View) param.thisObject;
-                    int id = view.getId();
-                    if ((id > 0 && HIDDEN_VIEW_IDS.contains(id)) || FORCE_HIDDEN_VIEWS.containsKey(view)) {
-                        view.setVisibility(View.GONE);
+    /**
+     * Hides the Meta AI FAB (resource id: fab_second, content-desc: "Message your assistant").
+     * The FAB lives inside ConversationsFragment, not HomeActivity's layout directly.
+     * We hook onViewCreated (initial inflation) and onResume (re-show safety net),
+     * both scoped only to ConversationsFragment — zero global hook overhead.
+     */
+    private static boolean isChatsTabActive(View view) {
+        if (view == null) return false;
+        try {
+            android.view.ViewParent parent = view.getParent();
+            View root = view;
+            while (parent instanceof View) {
+                root = (View) parent;
+                parent = root.getParent();
+            }
+
+            int pagerId = root.getResources().getIdentifier("pager", "id", root.getContext().getPackageName());
+            if (pagerId > 0) {
+                View pager = root.findViewById(pagerId);
+                if (pager != null) {
+                    java.lang.reflect.Method getCurrentItemMethod = pager.getClass().getMethod("getCurrentItem");
+                    Integer currentItem = (Integer) getCurrentItemMethod.invoke(pager);
+                    if (currentItem != null) {
+                        return currentItem == 0;
                     }
                 }
-            });
+            }
+        } catch (Throwable t) {
+            // Ignore log spam
+        }
+        return true; // Fallback to hiding during initial layout / early inflation
+    }
 
-            XposedHelpers.findAndHookMethod(View.class, "setVisibility", int.class, new XC_MethodHook() {
+    private static final java.util.Set<String> hookedPageChangeListeners = new java.util.HashSet<>();
+
+    private static void hookOnPageSelectedOnListenerClass(Class<?> listenerClass, final int fabId, Class<?> listenerInterface) {
+        final String className = listenerClass.getName();
+        synchronized (hookedPageChangeListeners) {
+            if (hookedPageChangeListeners.contains(className)) return;
+            hookedPageChangeListeners.add(className);
+        }
+
+        XposedBridge.log("[WAE] Hooking page listener methods on class: " + className);
+        
+        // Find all void(int) methods declared in the listener interface (obfuscated or not) and hook them
+        for (java.lang.reflect.Method m : listenerInterface.getDeclaredMethods()) {
+            if (m.getParameterTypes().length == 1 && m.getParameterTypes()[0] == int.class && m.getReturnType() == void.class) {
+                final String methodName = m.getName();
+                try {
+                    XposedHelpers.findAndHookMethod(listenerClass, methodName, int.class, new XC_MethodHook() {
+                        @Override
+                        protected void afterHookedMethod(MethodHookParam param) throws Throwable {
+                            int arg = (int) param.args[0];
+                            XposedBridge.log("[WAE] Page listener method " + methodName + " called with arg: " + arg);
+                            
+                            Activity current = WppCore.getCurrentActivity();
+                            if (current != null) {
+                                View fab = current.findViewById(fabId);
+                                if (fab != null) {
+                                    boolean isChats = isChatsTabActive(fab);
+                                    XposedBridge.log("[WAE] Page listener triggered update: isChatsActive = " + isChats);
+                                    if (isChats) {
+                                        fab.setVisibility(View.GONE);
+                                    } else {
+                                        fab.setVisibility(View.VISIBLE);
+                                    }
+                                }
+                            }
+                        }
+                    });
+                    XposedBridge.log("[WAE] Successfully hooked listener method: " + methodName + " on class " + className);
+                } catch (Throwable t) {
+                    XposedBridge.log("[WAE] Failed to hook listener method " + methodName + " on class " + className + ": " + t.toString());
+                }
+            }
+        }
+    }
+
+    private static void setupViewPagerHooks(Class<?> vpClass, final int fabId) {
+        XposedBridge.log("[WAE] setupViewPagerHooks called for class: " + vpClass.getName());
+        try {
+            Class<?> vpSuper = null;
+            Class<?> current = vpClass;
+            while (current != null && current != Object.class) {
+                if (current.getName().contains("ViewPager")) {
+                    vpSuper = current;
+                    break;
+                }
+                current = current.getSuperclass();
+            }
+
+            if (vpSuper == null) {
+                XposedBridge.log("[WAE] ViewPager class not found in hierarchy of " + vpClass.getName());
+                return;
+            }
+
+            XposedBridge.log("[WAE] Found ViewPager superclass: " + vpSuper.getName());
+            
+            // Programmatically find the listener interface from setOnPageChangeListener signature
+            Class<?> listenerInterface = null;
+            for (java.lang.reflect.Method m : vpSuper.getDeclaredMethods()) {
+                if (m.getName().equals("setOnPageChangeListener") && m.getParameterTypes().length == 1) {
+                    listenerInterface = m.getParameterTypes()[0];
+                    break;
+                }
+            }
+
+            if (listenerInterface == null) {
+                for (java.lang.reflect.Method m : vpSuper.getMethods()) {
+                    if (m.getName().equals("setOnPageChangeListener") && m.getParameterTypes().length == 1) {
+                        listenerInterface = m.getParameterTypes()[0];
+                        break;
+                    }
+                }
+            }
+
+            if (listenerInterface == null) {
+                XposedBridge.log("[WAE] Could not find setOnPageChangeListener method on ViewPager superclass!");
+                return;
+            }
+
+            XposedBridge.log("[WAE] Dynamically resolved OnPageChangeListener interface class: " + listenerInterface.getName());
+
+            final Class<?> finalInterface = listenerInterface;
+
+            // Find all methods on ViewPager that accept finalInterface as a single parameter and hook them
+            for (java.lang.reflect.Method m : vpSuper.getDeclaredMethods()) {
+                if (m.getParameterTypes().length == 1 && m.getParameterTypes()[0] == finalInterface) {
+                    final String mName = m.getName();
+                    try {
+                        XposedHelpers.findAndHookMethod(vpSuper, mName, finalInterface, new XC_MethodHook() {
+                            @Override
+                            protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
+                                Object listener = param.args[0];
+                                if (listener != null) {
+                                    hookOnPageSelectedOnListenerClass(listener.getClass(), fabId, finalInterface);
+                                }
+                            }
+                        });
+                        XposedBridge.log("[WAE] Dynamically hooked page listener registration method: " + mName + " on " + vpSuper.getName());
+                    } catch (Throwable t) {
+                        XposedBridge.log("[WAE] Failed to hook method: " + mName + ": " + t.toString());
+                    }
+                }
+            }
+
+            // Also check standard public methods from superclasses
+            for (java.lang.reflect.Method m : vpSuper.getMethods()) {
+                if (m.getParameterTypes().length == 1 && m.getParameterTypes()[0] == finalInterface) {
+                    final String mName = m.getName();
+                    try {
+                        XposedHelpers.findAndHookMethod(vpSuper, mName, finalInterface, new XC_MethodHook() {
+                            @Override
+                            protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
+                                Object listener = param.args[0];
+                                if (listener != null) {
+                                    hookOnPageSelectedOnListenerClass(listener.getClass(), fabId, finalInterface);
+                                }
+                            }
+                        });
+                        XposedBridge.log("[WAE] Dynamically hooked public page listener registration method: " + mName + " on " + vpSuper.getName());
+                    } catch (Throwable t) {
+                        // ignore if already hooked
+                    }
+                }
+            }
+        } catch (Throwable t) {
+            XposedBridge.log("[WAE] Failed to hook ViewPager: " + t.toString());
+        }
+    }
+
+    private void hideMetaAIFab() throws Exception {
+        XposedBridge.log("[WAE] hideMetaAIFab() called");
+        final int fabId = Utils.getID("fab_second", "id");
+        XposedBridge.log("[WAE] hideMetaAIFab: fabId = " + fabId);
+
+        if (fabId > 0) {
+            // Hook ViewPager early to intercept its listeners as they are being set on startup
+            try {
+                Class<?> vpClass = XposedHelpers.findClass("androidx.viewpager.widget.ViewPager", classLoader);
+                XposedBridge.log("[WAE] ViewPager class loaded early, setting up startup hooks");
+                setupViewPagerHooks(vpClass, fabId);
+            } catch (Throwable t) {
+                XposedBridge.log("[WAE] Failed to hook ViewPager class early: " + t.getMessage());
+            }
+
+            // Dynamic interceptor to force GONE on any post-layout visibility updates by WhatsApp
+            final XC_MethodHook visibilityHook = new XC_MethodHook() {
                 @Override
                 protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
-                    if (HIDDEN_VIEW_IDS.isEmpty() && FORCE_HIDDEN_VIEWS.isEmpty()) return;
-
                     View view = (View) param.thisObject;
-                    int id = view.getId();
-                    if (((id > 0 && HIDDEN_VIEW_IDS.contains(id)) || FORCE_HIDDEN_VIEWS.containsKey(view)) 
-                            && (int) param.args[0] != View.GONE) {
-                        param.args[0] = View.GONE;
+                    if (view.getId() == fabId) {
+                        if (isChatsTabActive(view)) {
+                            XposedBridge.log("[WAE] Intercepted setVisibility for fab_second in Chats, forcing GONE!");
+                            param.args[0] = View.GONE;
+                        } else {
+                            XposedBridge.log("[WAE] Intercepted setVisibility for fab_second outside Chats, allowing visibility: " + param.args[0]);
+                        }
+                    }
+                }
+            };
+
+            // Hook setVisibility on View.class as a base hook
+            XposedHelpers.findAndHookMethod(View.class, "setVisibility", int.class, visibilityHook);
+
+            // Hook 1: Catch the view immediately when it attaches to the window hierarchy
+            XposedHelpers.findAndHookMethod(View.class, "onAttachedToWindow", new XC_MethodHook() {
+                private final java.util.Set<Class<?>> hookedClasses = new java.util.HashSet<>();
+                private final java.util.Set<Class<?>> hookedViewPagerClasses = new java.util.HashSet<>();
+
+                @Override
+                protected void afterHookedMethod(MethodHookParam param) throws Throwable {
+                    View view = (View) param.thisObject;
+                    if (view.getId() == fabId) {
+                        boolean isChats = isChatsTabActive(view);
+                        XposedBridge.log("[WAE] Intercepted onAttachedToWindow for fab_second, isChatsTabActive = " + isChats);
+
+                        // Dynamically traverse up the hierarchy to hook setVisibility overrides (always do this for fab_second)
+                        Class<?> clazz = view.getClass();
+                        while (clazz != null && clazz != View.class) {
+                            boolean alreadyHooked;
+                            synchronized (hookedClasses) {
+                                alreadyHooked = hookedClasses.contains(clazz);
+                            }
+                            if (!alreadyHooked) {
+                                try {
+                                    // Check if this class overrides setVisibility
+                                    clazz.getDeclaredMethod("setVisibility", int.class);
+
+                                    // Hook it
+                                    XposedHelpers.findAndHookMethod(clazz, "setVisibility", int.class, visibilityHook);
+                                    XposedBridge.log("[WAE] Dynamically hooked setVisibility on class: " + clazz.getName());
+                                    synchronized (hookedClasses) {
+                                        hookedClasses.add(clazz);
+                                    }
+                                } catch (NoSuchMethodException ignored) {
+                                    // Walk up
+                                } catch (Throwable t) {
+                                    XposedBridge.log("[WAE] Failed to hook setVisibility on " + clazz.getName() + ": " + t.getMessage());
+                                }
+                            }
+                            clazz = clazz.getSuperclass();
+                        }
+
+                        if (isChats) {
+                            view.setVisibility(View.GONE);
+                        }
+                    } else {
+                        // Check if this view is an instance of androidx.viewpager.widget.ViewPager
+                        Class<?> vpClass = XposedHelpers.findClassIfExists("androidx.viewpager.widget.ViewPager", view.getContext().getClassLoader());
+                        if (vpClass != null && vpClass.isInstance(view)) {
+                            Class<?> currentVpClass = view.getClass();
+                            boolean alreadyHooked;
+                            synchronized (hookedViewPagerClasses) {
+                                alreadyHooked = hookedViewPagerClasses.contains(currentVpClass);
+                            }
+                            if (!alreadyHooked) {
+                                synchronized (hookedViewPagerClasses) {
+                                    hookedViewPagerClasses.add(currentVpClass);
+                                }
+                                XposedBridge.log("[WAE] ViewPager attached: " + currentVpClass.getName() + ", setting up hooks");
+                                setupViewPagerHooks(currentVpClass, fabId);
+                            }
+                        }
                     }
                 }
             });
-            viewVisibilityHooksInstalled = true;
         }
+    }
+
+    private static void hideFabSecond(View root) {
+        try {
+            if (root == null) return;
+            int fabId = Utils.getID("fab_second", "id");
+            if (fabId <= 0) return;
+            View fab = root.findViewById(fabId);
+            XposedBridge.log("[WAE] hideFabSecond: found FAB = " + fab);
+            if (fab != null) {
+                if (fab.getVisibility() != View.GONE) {
+                    XposedBridge.log("[WAE] hideFabSecond: setting FAB visibility to GONE");
+                    fab.setVisibility(View.GONE);
+                } else {
+                    XposedBridge.log("[WAE] hideFabSecond: FAB is already GONE");
+                }
+            }
+        } catch (Throwable ignored) {}
+    }
+
+    /**
+     * Hides custom filter views by resource ID in HomeActivity only.
+     * One-time scan after layout inflation — no global View hooks.
+     */
+    private void filterItemsInHomeActivity(String filterItems) throws Exception {
+        var ids = new ArrayList<Integer>();
+        for (String item : filterItems.split("\n")) {
+            int id = Utils.getID(item.trim(), "id");
+            if (id > 0) ids.add(id);
+        }
+        if (ids.isEmpty()) return;
+
+        Class<?> homeClass = WppCore.getHomeActivityClass(classLoader);
+        XposedBridge.hookAllMethods(homeClass, "setContentView", new XC_MethodHook() {
+            @Override
+            protected void afterHookedMethod(MethodHookParam param) throws Throwable {
+                hideViewsById((Activity) param.thisObject, ids);
+            }
+        });
+        WppCore.addListenerActivity((activity, state) -> {
+            if (state != WppCore.ActivityChangeState.ChangeType.RESUMED) return;
+            if (!homeClass.isInstance(activity)) return;
+            hideViewsById(activity, ids);
+        });
+    }
+
+    private static void hideViewsById(Activity activity, java.util.List<Integer> ids) {
+        try {
+            View root = activity.getWindow().getDecorView();
+            for (int id : ids) {
+                View v = root.findViewById(id);
+                if (v != null && v.getVisibility() != View.GONE) {
+                    v.setVisibility(View.GONE);
+                }
+            }
+        } catch (Throwable ignored) {}
     }
 
     private void disableAds() {
@@ -926,15 +1269,7 @@ public class Others extends Feature {
         XposedBridge.hookMethod(defEmojiClass, XC_MethodReplacement.returnConstant(null));
     }
 
-    private void filterItems(String filterItems) {
-        var itens = filterItems.split("\n");
-        for (String item : itens) {
-            var id = Utils.getID(item, "id");
-            if (id > 0) {
-                HIDDEN_VIEW_IDS.add(id);
-            }
-        }
-    }
+
 
     private void showOnline(boolean showOnline) throws Exception {
         var checkOnlineMethod = Unobfuscator.loadCheckOnlineMethod(classLoader);
@@ -962,11 +1297,149 @@ public class Others extends Feature {
         var methodPropsBoolean = Unobfuscator.loadPropsBooleanMethod(classLoader);
         logDebug(Unobfuscator.getMethodDescriptor(methodPropsBoolean));
         var dataUsageActivityClass = WppCore.getDataUsageActivityClass(classLoader);
+
+        // ──────────────────────────────────────────────────────────────────────
+        // FIX: ArchivedConversationsActivity crashes with
+        //   "Window feature must be requested before adding content"
+        //
+        // Root cause: WhatsApp's obfuscated base activity class (X.0Hi) calls
+        // requestWindowFeature AFTER setContentView inside onCreate.
+        // Our AB property overrides change WhatsApp's internal branching logic
+        // so that the activity takes a code path where setContentView runs
+        // before requestWindowFeature — a sequence that is normally skipped
+        // in vanilla WhatsApp.
+        //
+        // Strategy: We use TWO complementary guards:
+        //   1) ThreadLocal flag to suspend ALL property overrides during the
+        //      entire ArchivedConversationsActivity.onCreate chain (Instrumentation hook).
+        //   2) Nuclear fallback: hook the WhatsApp base activity's onCreate to
+        //      catch and suppress the AndroidRuntimeException so the activity
+        //      can still launch even if some cached property causes the issue.
+        // ──────────────────────────────────────────────────────────────────────
+
+        Class<?> archivedActivityClass;
+        try {
+            archivedActivityClass = classLoader.loadClass(
+                    "com.whatsapp.conversation.conversationslist.ArchivedConversationsActivity");
+        } catch (Throwable t) {
+            archivedActivityClass = null;
+            XposedBridge.log("[WAE] hookProps: could not load ArchivedConversationsActivity class: " + t);
+        }
+        final Class<?> archivedClass = archivedActivityClass;
+
+        // Guard 1: Suspend property overrides via Instrumentation hooks (covering both instantiation/constructor and onCreate)
+        if (archivedClass != null) {
+            // Hook instantiation
+            XposedHelpers.findAndHookMethod(
+                    android.app.Instrumentation.class,
+                    "newActivity",
+                    ClassLoader.class, String.class, android.content.Intent.class,
+                    new XC_MethodHook() {
+                @Override
+                protected void beforeHookedMethod(MethodHookParam param) {
+                    String className = (String) param.args[1];
+                    if ("com.whatsapp.conversation.conversationslist.ArchivedConversationsActivity".equals(className)) {
+                        sSuspendPropOverrides = true;
+                        XposedBridge.log("[WAE] Suspending prop overrides for ArchivedConversationsActivity (instantiation)");
+                    }
+                }
+            });
+
+            // Hook onCreate entry and exit
+            XposedHelpers.findAndHookMethod(
+                    android.app.Instrumentation.class,
+                    "callActivityOnCreate",
+                    Activity.class, android.os.Bundle.class,
+                    new XC_MethodHook() {
+                @Override
+                protected void beforeHookedMethod(MethodHookParam param) {
+                    if (param.args != null && param.args.length > 0 && param.args[0] != null) {
+                        XposedBridge.log("[WAE] callActivityOnCreate BEFORE: " + param.args[0].getClass().getName());
+                        if ("com.whatsapp.conversation.conversationslist.ArchivedConversationsActivity".equals(param.args[0].getClass().getName())) {
+                            sSuspendPropOverrides = true;
+                            XposedBridge.log("[WAE] Suspending prop overrides for ArchivedConversationsActivity (onCreate)");
+                        }
+                    }
+                }
+                @Override
+                protected void afterHookedMethod(MethodHookParam param) {
+                    if (param.args != null && param.args.length > 0 && param.args[0] != null &&
+                            "com.whatsapp.conversation.conversationslist.ArchivedConversationsActivity".equals(param.args[0].getClass().getName())) {
+                        sSuspendPropOverrides = false;
+                        XposedBridge.log("[WAE] Restored prop overrides after ArchivedConversationsActivity");
+                    }
+                }
+            });
+        }
+
+        // Guard 2: Walk the class hierarchy of ArchivedConversationsActivity
+        // and hook onCreate on EVERY class in the chain to catch and suppress the AndroidRuntimeException.
+        if (archivedClass != null) {
+            try {
+                Class<?> cursor = archivedClass;
+                while (cursor != null && cursor != Activity.class && cursor != Object.class) {
+                    boolean overridesOnCreate = false;
+                    try {
+                        cursor.getDeclaredMethod("onCreate", android.os.Bundle.class);
+                        overridesOnCreate = true;
+                    } catch (NoSuchMethodException ignored) {}
+
+                    if (overridesOnCreate) {
+                        final Class<?> currentClass = cursor;
+                        XposedBridge.log("[WAE] Hooking onCreate for hierarchy class: " + currentClass.getName());
+                        XposedHelpers.findAndHookMethod(currentClass, "onCreate",
+                                android.os.Bundle.class, new XC_MethodHook() {
+                            @Override
+                            protected void beforeHookedMethod(MethodHookParam param) {
+                                if (param.thisObject != null) {
+                                    XposedBridge.log("[WAE] Hierarchy onCreate BEFORE: " + param.thisObject.getClass().getName() + " on class " + currentClass.getName());
+                                    if ("com.whatsapp.conversation.conversationslist.ArchivedConversationsActivity".equals(param.thisObject.getClass().getName())) {
+                                        sSuspendPropOverrides = true;
+                                        XposedBridge.log("[WAE] onCreate guard BEFORE on " + currentClass.getSimpleName());
+                                    }
+                                }
+                            }
+                            @Override
+                            protected void afterHookedMethod(MethodHookParam param) {
+                                if (param.thisObject == null ||
+                                        !"com.whatsapp.conversation.conversationslist.ArchivedConversationsActivity".equals(param.thisObject.getClass().getName())) return;
+                                
+                                // Ensure sSuspendPropOverrides remains set during all nested onCreate calls
+                                // but we will let callActivityOnCreate afterHookedMethod clear it finally.
+                                
+                                if (param.hasThrowable()) {
+                                    Throwable thrown = param.getThrowable();
+                                    XposedBridge.log("[WAE] Exception detected in "
+                                            + currentClass.getSimpleName() + " for "
+                                            + param.thisObject.getClass().getSimpleName()
+                                            + ": " + thrown.getMessage());
+                                }
+                            }
+                        });
+                    }
+                    cursor = cursor.getSuperclass();
+                }
+            } catch (Throwable t) {
+                XposedBridge.log("[WAE] Failed to hook hierarchy onCreate: " + t);
+            }
+        }
+
         XposedBridge.hookMethod(methodPropsBoolean, new XC_MethodHook() {
             @Override
             protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
                 if (param.args == null || param.args.length == 0 || !(param.args[0] instanceof Integer)) return;
                 int i = (int) param.args[0];
+
+                // Skip all overrides while an activity that is sensitive to
+                // layout-order changes is still inside its onCreate() call,
+                // EXCEPT for 10380 which MUST be false to prevent the crash.
+                if (sSuspendPropOverrides) {
+                    XposedBridge.log("[WAE] ArchivedConversationsActivity queried boolean property: " + i);
+                    if (i == 10380) {
+                        param.setResult(false);
+                    }
+                    return;
+                }
 
                 Boolean propValue = propsBoolean.get(i);
                 if (propValue != null) {
@@ -987,6 +1460,13 @@ public class Others extends Feature {
             protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
                 if (param.args == null || param.args.length == 0 || !(param.args[0] instanceof Integer)) return;
                 int i = (int) param.args[0];
+
+                // Skip all overrides while a sensitive activity is in onCreate()
+                if (sSuspendPropOverrides) {
+                    XposedBridge.log("[WAE] ArchivedConversationsActivity queried integer property: " + i);
+                    return;
+                }
+
                 var propValue = propsInteger.get(i);
                 if (propValue == null) return;
                 param.setResult(propValue);
