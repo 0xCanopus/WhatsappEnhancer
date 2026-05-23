@@ -129,36 +129,6 @@ public class HomeFragment extends BaseFragment {
             startActivity(new Intent(requireContext(), SupportedVersionsActivity.class));
         });
 
-        binding.wppVersionRow.setOnClickListener(view -> {
-            animateClick(view);
-            try {
-                var packageInfo = App.getInstance().getPackageManager().getPackageInfo(FeatureLoader.PACKAGE_WPP, 0);
-                var installedVersion = packageInfo.versionName;
-                if (ApkMirrorFeedHelper.isBetaVersion(requireContext(), FeatureLoader.PACKAGE_WPP, installedVersion)) {
-                    showBetaWarningDialog(requireActivity(), FeatureLoader.PACKAGE_WPP, true);
-                } else {
-                    Toast.makeText(requireContext(), "WhatsApp is a stable version.", Toast.LENGTH_SHORT).show();
-                }
-            } catch (Exception e) {
-                Toast.makeText(requireContext(), "WhatsApp is not installed.", Toast.LENGTH_SHORT).show();
-            }
-        });
-
-        binding.businessVersionRow.setOnClickListener(view -> {
-            animateClick(view);
-            try {
-                var packageInfo = App.getInstance().getPackageManager().getPackageInfo(FeatureLoader.PACKAGE_BUSINESS, 0);
-                var installedVersion = packageInfo.versionName;
-                if (ApkMirrorFeedHelper.isBetaVersion(requireContext(), FeatureLoader.PACKAGE_BUSINESS, installedVersion)) {
-                    showBetaWarningDialog(requireActivity(), FeatureLoader.PACKAGE_BUSINESS, true);
-                } else {
-                    Toast.makeText(requireContext(), "WhatsApp Business is a stable version.", Toast.LENGTH_SHORT).show();
-                }
-            } catch (Exception e) {
-                Toast.makeText(requireContext(), "WhatsApp Business is not installed.", Toast.LENGTH_SHORT).show();
-            }
-        });
-
         binding.btnReportIssue.setOnClickListener(view -> {
             animateClick(view);
             try {
@@ -691,6 +661,11 @@ public class HomeFragment extends BaseFragment {
             }
 
             if (isSupported) {
+                boolean isBetaModule = BuildConfig.VERSION_NAME.toLowerCase().contains("beta");
+                // log beta
+                Log.d("WAE_BETA", "isBetaModule: " + isBetaModule);
+                if (!isBetaModule) {
+
                 if (ApkMirrorFeedHelper.isBetaVersion(activity, packageName, installedVersion)) {
                     statusView.setText("Beta Unsupported");
                     statusView.setTextColor(colorError);
@@ -741,6 +716,7 @@ public class HomeFragment extends BaseFragment {
                             Log.e("WAE_BETA", "Error showing bottom sheet: " + e.getMessage());
                         }
                     });
+                }
                 } else {
                     statusView.setText("Supported");
                     statusView.setTextColor(colorSuccess);

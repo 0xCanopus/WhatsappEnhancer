@@ -895,9 +895,9 @@ public class FeatureLoader {
             return;
         }
 
-        // Allow WhatsApp beta if the module is in beta mode
-        String releaseChannel = Utils.xprefs != null ? Utils.xprefs.getString("release_channel", "stable") : "stable";
-        if ("beta".equals(releaseChannel)) {
+        // Allow WhatsApp beta if the module itself is a beta build
+        boolean isBetaModule = com.waenhancer.BuildConfig.VERSION_NAME.toLowerCase().contains("beta");
+        if (isBetaModule) {
             return;
         }
 
