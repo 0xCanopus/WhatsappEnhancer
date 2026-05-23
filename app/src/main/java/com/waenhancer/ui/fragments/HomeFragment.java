@@ -701,15 +701,15 @@ public class HomeFragment extends BaseFragment {
                     rowView.setOnClickListener(v -> {
                         try {
                             com.google.android.material.bottomsheet.BottomSheetDialog dialog = new com.google.android.material.bottomsheet.BottomSheetDialog(activity);
-                            View view = LayoutInflater.from(activity).inflate(R.layout.bottom_sheet_info, null);
+                            View view = LayoutInflater.from(activity).inflate(R.layout.bottom_sheet_action, null);
                             dialog.setContentView(view);
 
-                            ((com.google.android.material.textview.MaterialTextView) view.findViewById(R.id.bs_title)).setText("Beta Version Detected");
+                            ((com.google.android.material.textview.MaterialTextView) view.findViewById(R.id.bs_title)).setText("WhatsApp Beta Detected");
                             ((com.google.android.material.textview.MaterialTextView) view.findViewById(R.id.bs_message)).setText(
-                                    "You have installed a beta version of " + appName + ". WaEnhancerX is designed for the stable versions of WhatsApp. Please leave the beta program to install the stable release.");
+                                    "You are using a beta version of " + appName + " while WaEnhancerX is currently set to the Stable update channel.\n\nTo ensure full compatibility and stay up-to-date with every new WhatsApp beta update, we highly recommend switching WaEnhancerX to the Beta update channel.");
 
-                            com.google.android.material.button.MaterialButton okBtn = view.findViewById(R.id.bs_ok_btn);
-                            okBtn.setText("Leave Beta Program");
+                            com.google.android.material.button.MaterialButton okBtn = view.findViewById(R.id.bs_confirm_btn);
+                            okBtn.setText("Leave WhatsApp Beta");
                             okBtn.setOnClickListener(v2 -> {
                                 try {
                                     String url = FeatureLoader.PACKAGE_WPP.equals(packageName) ?
@@ -720,6 +720,18 @@ public class HomeFragment extends BaseFragment {
                                     activity.startActivity(intent);
                                 } catch (Exception e) {
                                     Log.e("WAE_BETA", "Failed to open beta URL: " + e.getMessage());
+                                }
+                                dialog.dismiss();
+                            });
+
+                            com.google.android.material.button.MaterialButton cancelBtn = view.findViewById(R.id.bs_cancel_btn);
+                            cancelBtn.setText("Switch to WAEX Beta");
+                            cancelBtn.setOnClickListener(v2 -> {
+                                try {
+                                    Intent intent = new Intent(activity, ChangelogActivity.class);
+                                    activity.startActivity(intent);
+                                } catch (Exception e) {
+                                    Log.e("WAE_BETA", "Failed to open ChangelogActivity: " + e.getMessage());
                                 }
                                 dialog.dismiss();
                             });

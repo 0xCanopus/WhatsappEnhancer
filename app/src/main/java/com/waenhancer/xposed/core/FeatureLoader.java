@@ -895,6 +895,12 @@ public class FeatureLoader {
             return;
         }
 
+        // Allow WhatsApp beta if the module is in beta mode
+        String releaseChannel = Utils.xprefs != null ? Utils.xprefs.getString("release_channel", "stable") : "stable";
+        if ("beta".equals(releaseChannel)) {
+            return;
+        }
+
         ApkMirrorFeedHelper.fetchVersionsIfNeededForPackage(activity, currentPackage, () -> {
             try {
                 PackageManager pm = activity.getPackageManager();
@@ -925,9 +931,9 @@ public class FeatureLoader {
         activity.runOnUiThread(() -> {
             try {
                 new AlertDialogWpp(activity)
-                        .setTitle("Beta Version Detected")
-                        .setMessage("You have installed a beta version of " + appName + ". WaEnhancerX is designed for the stable versions of WhatsApp, if you face any bugs please switch to a stable version of " + appName + ".")
-                        .setPositiveButton("Leave Beta Program", (dialog, which) -> {
+                        .setTitle("WhatsApp Beta Detected")
+                        .setMessage("You are using a beta version of " + appName + " while WaEnhancerX is currently set to the Stable update channel.\n\nWaEnhancerX Stable is designed exclusively for stable WhatsApp releases. To ensure full compatibility and stay up-to-date with every new WhatsApp beta update, we highly recommend switching WaEnhancerX to the Beta update channel in the module settings.")
+                        .setPositiveButton("Leave WhatsApp Beta", (dialog, which) -> {
                             try {
                                 String url = PACKAGE_WPP.equals(packageName) ?
                                         "https://play.google.com/apps/testing/com.whatsapp" :
@@ -940,7 +946,18 @@ public class FeatureLoader {
                             }
                             dialog.dismiss();
                         })
-                        .setNegativeButton("Dismiss for 1 Day", (dialog, which) -> {
+                        .setNegativeButton("Switch to WAEX Beta", (dialog, which) -> {
+                            try {
+                                Intent intent = new Intent();
+                                intent.setComponent(new android.content.ComponentName("com.waenhancer", "com.waenhancer.activities.ChangelogActivity"));
+                                intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                                activity.startActivity(intent);
+                            } catch (Throwable t) {
+                                XposedBridge.log("[WAEX] Failed to open ChangelogActivity: " + t.getMessage());
+                            }
+                            dialog.dismiss();
+                        })
+                        .setNeutralButton("Dismiss for 1 Day", (dialog, which) -> {
                             prefs.edit().putLong(prefKey, System.currentTimeMillis()).apply();
                             dialog.dismiss();
                         })
