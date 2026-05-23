@@ -35,6 +35,12 @@
             app:summary="@string/antirevokestatus_sum"
             app:title="@string/antirevokestatus" />
 
+        <com.jaredrummler.android.colorpicker.ColorPreferenceCompat
+            app:cpv_showAlphaSlider="true"
+            app:key="deleted_message_color"
+            app:summary="@string/deleted_message_color_sum"
+            app:title="@string/deleted_message_color" />
+
         <rikka.material.preference.MaterialSwitchPreference
             app:key="antidisappearing"
             app:summary="@string/antidisappearing_sum"

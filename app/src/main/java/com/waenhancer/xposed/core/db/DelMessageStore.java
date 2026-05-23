@@ -312,6 +312,7 @@ public class DelMessageStore extends SQLiteOpenHelper {
                 timestampCache.put(msgid, ts);
                 return ts;
             }
+            timestampCache.put(msgid, -1L);
             return 0;
         }
     }

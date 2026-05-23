@@ -191,7 +191,8 @@ public class AntiRevoke extends Feature {
                 if (fMessage.getKey().isFromMe)
                     return;
                 var dateTextView = (TextView) viewGroup.findViewById(Utils.getID("date", "id"));
-                bindRevokedMessageUI(fMessage, dateTextView, "antirevoke");
+                var messageTextView = (TextView) viewGroup.findViewById(Utils.getID("message_text", "id"));
+                bindRevokedMessageUI(fMessage, dateTextView, messageTextView, "antirevoke");
             }
         });
 
@@ -218,7 +219,7 @@ public class AntiRevoke extends Feature {
                 for (Field textView : textViews) {
                     TextView textView1 = (TextView) textView.get(objView);
                     if (textView1 != null && textView1.getId() == dateId) {
-                        bindRevokedMessageUI(new FMessageWpp(objFMessage), textView1, "antirevokestatus");
+                        bindRevokedMessageUI(new FMessageWpp(objFMessage), textView1, null, "antirevokestatus");
                         break;
                     }
                 }
@@ -403,7 +404,7 @@ public class AntiRevoke extends Feature {
     private static int antirevokeVal = -1;
     private static int antirevokeStatusVal = -1;
 
-    private void bindRevokedMessageUI(FMessageWpp fMessage, TextView dateTextView, String antirevokeType) {
+    private void bindRevokedMessageUI(FMessageWpp fMessage, TextView dateTextView, TextView messageTextView, String antirevokeType) {
         if (dateTextView == null) return;
         
         int antirevokeValue = 0;
@@ -416,12 +417,43 @@ public class AntiRevoke extends Feature {
         var messageRevokedList = getRevokedMessagesForJid(fMessage);
         String originalMessage = (String) XposedHelpers.getAdditionalInstanceField(dateTextView, "originalMessage");
 
+        Integer originalDateColor = (Integer) XposedHelpers.getAdditionalInstanceField(dateTextView, "originalColor");
+        if (originalDateColor == null) {
+            originalDateColor = dateTextView.getCurrentTextColor();
+            XposedHelpers.setAdditionalInstanceField(dateTextView, "originalColor", originalDateColor);
+        }
+
+        Integer originalMessageColor = null;
+        if (messageTextView != null) {
+            originalMessageColor = (Integer) XposedHelpers.getAdditionalInstanceField(messageTextView, "originalColor");
+            if (originalMessageColor == null) {
+                originalMessageColor = messageTextView.getCurrentTextColor();
+                XposedHelpers.setAdditionalInstanceField(messageTextView, "originalColor", originalMessageColor);
+            }
+        }
+
+        int customColor = 0;
+        try {
+            customColor = prefs.getInt("deleted_message_color", 0);
+        } catch (Exception e) {
+            try {
+                String colorStr = prefs.getString("deleted_message_color", "");
+                if (!colorStr.isEmpty()) {
+                    try {
+                        customColor = android.graphics.Color.parseColor(colorStr);
+                    } catch (Exception parseException) {
+                        customColor = Integer.parseInt(colorStr);
+                    }
+                }
+            } catch (Exception ignored) {}
+        }
+
         String messageID = null;
-        if (messageRevokedList.contains(key.messageID) || revokedKeyIds.containsKey(key.messageID)) {
+        if (messageRevokedList.contains(key.messageID) || revokedKeyIds.containsKey(key.messageID) || com.waenhancer.xposed.core.db.DelMessageStore.getInstance(com.waenhancer.xposed.utils.Utils.getApplication()).getTimestampByMessageId(key.messageID) > 0) {
             messageID = key.messageID;
         } else {
             String originalKey = com.waenhancer.xposed.core.db.MessageStore.getInstance().getOriginalMessageKey(fMessage.getRowId());
-            if (originalKey != null && !originalKey.isEmpty() && (messageRevokedList.contains(originalKey) || revokedKeyIds.containsKey(originalKey))) {
+            if (originalKey != null && !originalKey.isEmpty() && (messageRevokedList.contains(originalKey) || revokedKeyIds.containsKey(originalKey) || com.waenhancer.xposed.core.db.DelMessageStore.getInstance(com.waenhancer.xposed.utils.Utils.getApplication()).getTimestampByMessageId(originalKey) > 0)) {
                 messageID = originalKey;
             }
         }
@@ -444,6 +476,13 @@ public class AntiRevoke extends Feature {
                 });
             }
 
+            if (customColor != 0) {
+                dateTextView.setTextColor(customColor);
+                if (messageTextView != null) {
+                    messageTextView.setTextColor(customColor);
+                }
+            }
+
             if (antirevokeValue == 1) {
                 String messageText = originalMessage != null ? originalMessage : dateTextView.getText().toString();
                 if (stringMessageDeleted == null) {
@@ -458,6 +497,12 @@ public class AntiRevoke extends Feature {
                 dateTextView.setCompoundDrawablePadding(5);
             }
         } else {
+            if (originalDateColor != null) {
+                dateTextView.setTextColor(originalDateColor);
+            }
+            if (messageTextView != null && originalMessageColor != null) {
+                messageTextView.setTextColor(originalMessageColor);
+            }
             dateTextView.setCompoundDrawables(null, null, null, null);
             if (originalMessage != null) {
                 dateTextView.setText(originalMessage);

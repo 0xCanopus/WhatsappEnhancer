@@ -340,6 +340,14 @@ public class FeatureCatalog {
                                 "conversation",
                                 Arrays.asList("anti", "delete", "status")));
 
+                catalog.add(new SearchableFeature("deleted_message_color",
+                                context.getString(R.string.deleted_message_color),
+                                context.getString(R.string.deleted_message_color_sum),
+                                SearchableFeature.Category.GENERAL_CONVERSATION,
+                                SearchableFeature.FragmentType.GENERAL,
+                                "conversation",
+                                Arrays.asList("color", "delete", "message", "text")));
+
                 catalog.add(new SearchableFeature("antidisappearing",
                                 context.getString(R.string.antidisappearing),
                                 context.getString(R.string.antidisappearing_sum),
