@@ -41,7 +41,7 @@ android {
         create("business") {
             dimension = "version"
             applicationIdSuffix = ".w4b"
-            resValue("string", "app_name", "Wa Enhancer Business")
+            resValue("string", "app_name", "Wa Enhancer X Business")
         }
 */
     }

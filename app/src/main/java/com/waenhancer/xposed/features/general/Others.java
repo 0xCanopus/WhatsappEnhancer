@@ -99,7 +99,6 @@ public class Others extends Feature {
         var filterSeen = prefs.getBoolean("filterseen", false);
         var status_style = Integer.parseInt(prefs.getString("status_style", "1"));
         var disableMetaAI = prefs.getBoolean("metaai", false);
-        XposedBridge.log("[WAE] Others: disableMetaAI preference value = " + disableMetaAI);
         var disable_sensor_proximity = prefs.getBoolean("disable_sensor_proximity", false);
         var proximity_audios = prefs.getBoolean("proximity_audios", false);
         var showOnline = prefs.getBoolean("showonline", false);
@@ -347,7 +346,7 @@ public class Others extends Feature {
                 }
             });
         } catch (Throwable t) {
-            XposedBridge.log("[WAE] Failed to hook Conversation: " + t.toString());
+            XposedBridge.log("[WAEX] Failed to hook Conversation: " + t.toString());
         }
 
     }
@@ -1290,7 +1289,7 @@ public class Others extends Feature {
                     "com.whatsapp.conversation.conversationslist.ArchivedConversationsActivity");
         } catch (Throwable t) {
             archivedActivityClass = null;
-            XposedBridge.log("[WAE] hookProps: could not load ArchivedConversationsActivity class: " + t);
+            XposedBridge.log("[WAEX] hookProps: could not load ArchivedConversationsActivity class: " + t);
         }
         final Class<?> archivedClass = archivedActivityClass;
 
@@ -1307,7 +1306,6 @@ public class Others extends Feature {
                     String className = (String) param.args[1];
                     if ("com.whatsapp.conversation.conversationslist.ArchivedConversationsActivity".equals(className)) {
                         sSuspendPropOverrides = true;
-                        XposedBridge.log("[WAE] Suspending prop overrides for ArchivedConversationsActivity (instantiation)");
                     }
                 }
             });
@@ -1321,10 +1319,8 @@ public class Others extends Feature {
                 @Override
                 protected void beforeHookedMethod(MethodHookParam param) {
                     if (param.args != null && param.args.length > 0 && param.args[0] != null) {
-                        XposedBridge.log("[WAE] callActivityOnCreate BEFORE: " + param.args[0].getClass().getName());
                         if ("com.whatsapp.conversation.conversationslist.ArchivedConversationsActivity".equals(param.args[0].getClass().getName())) {
                             sSuspendPropOverrides = true;
-                            XposedBridge.log("[WAE] Suspending prop overrides for ArchivedConversationsActivity (onCreate)");
                         }
                     }
                 }
@@ -1333,7 +1329,6 @@ public class Others extends Feature {
                     if (param.args != null && param.args.length > 0 && param.args[0] != null &&
                             "com.whatsapp.conversation.conversationslist.ArchivedConversationsActivity".equals(param.args[0].getClass().getName())) {
                         sSuspendPropOverrides = false;
-                        XposedBridge.log("[WAE] Restored prop overrides after ArchivedConversationsActivity");
                     }
                 }
             });
@@ -1353,16 +1348,13 @@ public class Others extends Feature {
 
                     if (overridesOnCreate) {
                         final Class<?> currentClass = cursor;
-                        XposedBridge.log("[WAE] Hooking onCreate for hierarchy class: " + currentClass.getName());
                         XposedHelpers.findAndHookMethod(currentClass, "onCreate",
                                 android.os.Bundle.class, new XC_MethodHook() {
                             @Override
                             protected void beforeHookedMethod(MethodHookParam param) {
                                 if (param.thisObject != null) {
-                                    XposedBridge.log("[WAE] Hierarchy onCreate BEFORE: " + param.thisObject.getClass().getName() + " on class " + currentClass.getName());
                                     if ("com.whatsapp.conversation.conversationslist.ArchivedConversationsActivity".equals(param.thisObject.getClass().getName())) {
                                         sSuspendPropOverrides = true;
-                                        XposedBridge.log("[WAE] onCreate guard BEFORE on " + currentClass.getSimpleName());
                                     }
                                 }
                             }
@@ -1376,7 +1368,7 @@ public class Others extends Feature {
                                 
                                 if (param.hasThrowable()) {
                                     Throwable thrown = param.getThrowable();
-                                    XposedBridge.log("[WAE] Exception detected in "
+                                    XposedBridge.log("[WAEX] Exception detected in "
                                             + currentClass.getSimpleName() + " for "
                                             + param.thisObject.getClass().getSimpleName()
                                             + ": " + thrown.getMessage());
@@ -1387,7 +1379,7 @@ public class Others extends Feature {
                     cursor = cursor.getSuperclass();
                 }
             } catch (Throwable t) {
-                XposedBridge.log("[WAE] Failed to hook hierarchy onCreate: " + t);
+                XposedBridge.log("[WAEX] Failed to hook hierarchy onCreate: " + t);
             }
         }
 
@@ -1401,7 +1393,6 @@ public class Others extends Feature {
                 // layout-order changes is still inside its onCreate() call,
                 // EXCEPT for 10380 which MUST be false to prevent the crash.
                 if (sSuspendPropOverrides) {
-                    XposedBridge.log("[WAE] ArchivedConversationsActivity queried boolean property: " + i);
                     if (i == 10380) {
                         param.setResult(false);
                     }
@@ -1430,7 +1421,6 @@ public class Others extends Feature {
 
                 // Skip all overrides while a sensitive activity is in onCreate()
                 if (sSuspendPropOverrides) {
-                    XposedBridge.log("[WAE] ArchivedConversationsActivity queried integer property: " + i);
                     return;
                 }
 

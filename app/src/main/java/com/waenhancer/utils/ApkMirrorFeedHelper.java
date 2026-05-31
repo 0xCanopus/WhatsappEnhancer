@@ -15,7 +15,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class ApkMirrorFeedHelper {
-    private static final String TAG = "WAE_ApkMirrorFeedHelper";
+    private static final String TAG = "WAEX_ApkMirrorFeedHelper";
     
     private static final String FEED_WPP = "https://www.apkmirror.com/apk/whatsapp-inc/whatsapp-messenger/feed/";
     private static final String FEED_BUSINESS = "https://www.apkmirror.com/apk/whatsapp-inc/whatsapp-messenger-business/feed/";

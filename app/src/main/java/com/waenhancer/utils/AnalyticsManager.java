@@ -8,7 +8,7 @@ import com.waenhancer.BuildConfig;
 
 public class AnalyticsManager {
 
-    private static final String TAG = "WAE_Analytics";
+    private static final String TAG = "WAEX_Analytics";
     
     private static final String[] ANALYTICS_PROVIDER_AUTHORITIES = new String[] {
             BuildConfig.APPLICATION_ID + ".hookprovider",

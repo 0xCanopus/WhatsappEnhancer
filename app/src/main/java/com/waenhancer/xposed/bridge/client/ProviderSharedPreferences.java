@@ -221,7 +221,7 @@ public class ProviderSharedPreferences implements SharedPreferences {
             ;
             Serializable serializable = result.getSerializable("prefs");
             if (!(serializable instanceof Map)) {
-                android.util.Log.e("WAE", "Hydration failed: result 'prefs' is not a Map (type: " + (serializable != null ? serializable.getClass().getName() : "null") + ")");
+                android.util.Log.e("WAEX", "Hydration failed: result 'prefs' is not a Map (type: " + (serializable != null ? serializable.getClass().getName() : "null") + ")");
                 return;
             }
             Map<?, ?> rawMap = (Map<?, ?>) serializable;
@@ -236,7 +236,7 @@ public class ProviderSharedPreferences implements SharedPreferences {
                 Object value = entry.getValue();
                 
                 // Specific migrations during hydration
-                if ("open_wae".equals(key) && value instanceof Boolean) {
+                if ("open_waex".equals(key) && value instanceof Boolean) {
                     editor.putString(key, ((Boolean) value) ? "1" : "0");
                     continue;
                 }
@@ -272,7 +272,7 @@ public class ProviderSharedPreferences implements SharedPreferences {
             editor.commit();
             ;
         } catch (Exception e) {
-            android.util.Log.e("WAE", "Hydration failed with exception: " + e.getMessage(), e);
+            android.util.Log.e("WAEX", "Hydration failed with exception: " + e.getMessage(), e);
         }
     }
 
@@ -402,7 +402,7 @@ public class ProviderSharedPreferences implements SharedPreferences {
                     return result;
                 }
             } catch (Throwable e) {
-                android.util.Log.e("WAE_ProviderSharedPrefs", "Call error (" + authority + "): " + e.getMessage(), e);
+                android.util.Log.e("WAEX_ProviderSharedPrefs", "Call error (" + authority + "): " + e.getMessage(), e);
             }
         }
         return null;

@@ -6,7 +6,7 @@ import android.content.Intent;
 import android.util.Log;
 
 public class TaskerMessageSentReceiver extends BroadcastReceiver {
-    private static final String TAG = "WAE_TaskerReceiver";
+    private static final String TAG = "WAEX_TaskerReceiver";
 
     @Override
     public void onReceive(Context context, Intent intent) {

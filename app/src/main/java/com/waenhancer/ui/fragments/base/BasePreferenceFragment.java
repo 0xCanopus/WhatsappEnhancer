@@ -232,7 +232,7 @@ public abstract class BasePreferenceFragment extends PreferenceFragmentCompat
                 s.equals("update_alert_frequency") || 
                 s.equals("last_update_check") || 
                 s.equals("show_hook_toast") || 
-                s.equals("open_wae");
+                s.equals("open_waex");
 
         if (!isInternalKey) {
             ;
@@ -247,7 +247,7 @@ public abstract class BasePreferenceFragment extends PreferenceFragmentCompat
                     mPrefs.edit().putStringSet("pending_restart_changes", changes).apply();
                 }
             } catch (Exception e) {
-                android.util.Log.e("WAE_Manager", "Failed to track change title: " + e.getMessage());
+                android.util.Log.e("WAEX_Manager", "Failed to track change title: " + e.getMessage());
             }
 
             // Notify the Xposed module that preferences have changed via both ContentProvider and Broadcast
@@ -360,11 +360,11 @@ public abstract class BasePreferenceFragment extends PreferenceFragmentCompat
             App.setThemeMode(mode);
         }
 
-        var colorMode = mPrefs.getString("wae_color_mode", "preset");
+        var colorMode = mPrefs.getString("waex_color_mode", "preset");
         var useMonet = Objects.equals(colorMode, "monet") && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S;
-        setPreferenceState("wae_color_preset", !useMonet);
+        setPreferenceState("waex_color_preset", !useMonet);
 
-        if (Objects.equals(key, "wae_color_mode") || Objects.equals(key, "wae_color_preset")) {
+        if (Objects.equals(key, "waex_color_mode") || Objects.equals(key, "waex_color_preset")) {
             if (getActivity() != null) {
                 getActivity().recreate();
             }

@@ -52,7 +52,7 @@
             app:entries="@array/wa_enhancer_entry_point_entries"
             app:entryValues="@array/wa_enhancer_entry_point_values"
             app:iconSpaceReserved="false"
-            app:key="open_wae"
+            app:key="open_waex"
             app:summary="@string/wa_enhancer_embedded_settings_sum"
             app:title="@string/wa_enhancer_embedded_settings" />
 

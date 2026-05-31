@@ -575,10 +575,7 @@ public class FeatureLoader {
             }
             var allPrefs = xpref.getAll();
             if (allPrefs == null || allPrefs.isEmpty()) {
-                XposedBridge.log("[WAEX] PREFS WARNING: XSharedPreferences returned empty data. "
-                        + "File: " + prefFile.getAbsolutePath());
-            } else if (Feature.DEBUG) {
-                XposedBridge.log("[WAEX] Prefs OK: " + allPrefs.size() + " entries loaded");
+                // Empty prefs data
             }
         } catch (Throwable t) {
             XposedBridge.log("[WAEX] checkPrefsReadable failed: " + t.getMessage());
@@ -751,8 +748,6 @@ public class FeatureLoader {
         // Settings screen injection is only relevant after home is available.
         FeatureRegistry.registerLazyFeature("Settings Injector", SettingsInjector.class,
                 FeatureRegistry.TriggerType.ACTIVITY_RESUMED, "HomeActivity", false);
-
-        XposedBridge.log("[FeatureRegistry] Registered " + FeatureRegistry.getRegisteredCount() + " lazy features");
     }
 
     /**
@@ -814,8 +809,6 @@ public class FeatureLoader {
                 }
             }
         });
-
-        XposedBridge.log("[FeatureRegistry] Lazy feature triggers initialized");
     }
 
     private static void plugins(@NonNull ClassLoader loader, @NonNull android.content.SharedPreferences pref,
@@ -913,7 +906,6 @@ public class FeatureLoader {
         for (var classe : allFeatureClasses) {
             // Skip lazy features if lazy loading is enabled - they'll load on-demand
             if (lazyLoadingEnabled && FeatureRegistry.isLazyFeature(classe.getSimpleName())) {
-                XposedBridge.log("[FeatureLoader] Skipping " + classe.getSimpleName() + " (lazy loading enabled)");
                 continue;
             }
 
@@ -941,17 +933,9 @@ public class FeatureLoader {
         }
         executorService.shutdown();
         try {
-            if (!executorService.awaitTermination(15, TimeUnit.SECONDS)) {
-                XposedBridge.log("WAE: Features failed to load within 15 seconds");
-            }
+            executorService.awaitTermination(15, TimeUnit.SECONDS);
         } catch (InterruptedException e) {
             XposedBridge.log(e);
-        }
-        if (DebugFeature.DEBUG) {
-            for (var time : times) {
-                if (time != null)
-                    XposedBridge.log(time);
-            }
         }
     }
 

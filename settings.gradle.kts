@@ -21,7 +21,7 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "Wa Enhancer"
+rootProject.name = "Wa Enhancer X"
 include(":app")
 
 // ─────────────────────────────────────────────────────────────────────────────

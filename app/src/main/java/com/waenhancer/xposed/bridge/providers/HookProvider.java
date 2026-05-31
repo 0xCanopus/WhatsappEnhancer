@@ -44,7 +44,7 @@ public class HookProvider extends ContentProvider {
         try {
             SharedPreferences prefs = getPrefs();
             if (prefs == null) {
-                android.util.Log.e("WAE_Provider", "Failed to get SharedPreferences in HookProvider");
+                android.util.Log.e("WAEX_Provider", "Failed to get SharedPreferences in HookProvider");
                 return null;
             }
             if (method.equals("getHookBinder")) {
@@ -90,7 +90,7 @@ public class HookProvider extends ContentProvider {
                         com.google.firebase.crashlytics.FirebaseCrashlytics.getInstance().recordException(
                                 new com.waenhancer.utils.WhatsAppCrashException("WhatsApp Crash: \n" + stacktrace));
                     } catch (Exception e) {
-                        android.util.Log.e("WAE_Provider", "Failed to record crash to Crashlytics: " + e.getMessage());
+                        android.util.Log.e("WAEX_Provider", "Failed to record crash to Crashlytics: " + e.getMessage());
                     }
                 }
                 return Bundle.EMPTY;

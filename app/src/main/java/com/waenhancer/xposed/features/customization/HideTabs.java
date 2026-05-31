@@ -136,8 +136,6 @@ public class HideTabs extends Feature {
                 } catch (Exception e) {
                     XposedBridge.log("HideTabs: failed to get TabsPager instance: " + e);
                 }
-                XposedBridge.log("HideTabs: after HomeActivity.onCreate: originalTabs=" + originalTabs
-                        + " mTabPager=" + (mTabPagerInstance != null));
                 PerfLogger.end("HideTabs.homeOnCreate", perfStart, 1);
             }
         });
@@ -153,9 +151,6 @@ public class HideTabs extends Feature {
                     var index = (int) param.args[0];
                     var idxAtual = (int) XposedHelpers.callMethod(param.thisObject, "getCurrentItem");
                     int newIndex = getNewTabIndex(hideTabsList, idxAtual, index);
-                    if (newIndex != index) {
-                        XposedBridge.log("HideTabs: scroll redirect " + index + " -> " + newIndex);
-                    }
                     param.args[0] = newIndex;
                 }
                 PerfLogger.end("HideTabs.onMenuItemSelected", perfStart, 1);

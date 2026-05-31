@@ -71,7 +71,7 @@ public class Utils {
     public static void init(ClassLoader loader) {
         var context = Utils.getApplication();
         var notificationManager = NotificationManagerCompat.from(context);
-        var channel = new NotificationChannel("wppenhacer", "WAE Enhancer", NotificationManager.IMPORTANCE_HIGH);
+        var channel = new NotificationChannel("wppenhacer", "Wa Enhancer X", NotificationManager.IMPORTANCE_HIGH);
         notificationManager.createNotificationChannel(channel);
     }
 
@@ -315,7 +315,7 @@ public class Utils {
 
     public static void logError(String message) {
         try {
-            XposedBridge.log("[WAE_ERROR] " + message);
+            XposedBridge.log("[WAEX_ERROR] " + message);
         } catch (NoClassDefFoundError | NoSuchMethodError e) {
         }
     }
@@ -420,7 +420,7 @@ public class Utils {
     public static void showNotification(String title, String content) {
         var context = Utils.getApplication();
         var notificationManager = NotificationManagerCompat.from(context);
-        var channel = new NotificationChannel("wppenhacer", "WAE Enhancer", NotificationManager.IMPORTANCE_HIGH);
+        var channel = new NotificationChannel("wppenhacer", "Wa Enhancer X", NotificationManager.IMPORTANCE_HIGH);
         notificationManager.createNotificationChannel(channel);
         var notification = new NotificationCompat.Builder(context, "wppenhacer")
                 .setSmallIcon(android.R.mipmap.sym_def_app_icon)
@@ -593,7 +593,7 @@ public class Utils {
             if ("system".equals(theme) || "default".equals(theme)) return 0;
 
         } catch (Throwable t) {
-            android.util.Log.e("WAE_UTILS", "Error reading theme prefs: " + t.getMessage());
+            android.util.Log.e("WAEX_UTILS", "Error reading theme prefs: " + t.getMessage());
         }
         return 0;
     }
