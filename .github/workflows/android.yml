@@ -1,42 +1,13 @@
 name: Android CI
 
 on:
-  push:
-    branches: ["master", "beta"]
+  workflow_dispatch: # This allows manual triggering from the GitHub Actions tab
 
 jobs:
-  check-build-flag:
-    runs-on: ubuntu-latest
-    outputs:
-      should_build: ${{ steps.flags.outputs.should_build }}
-      release_type: ${{ steps.flags.outputs.release_type }}
-    steps:
-      - name: Detect build flag and release type
-        id: flags
-        run: |
-          COMMIT_MSG="${{ github.event.head_commit.message }}"
-          BRANCH="${GITHUB_REF#refs/heads/}"
-
-          if [[ "$COMMIT_MSG" =~ [[:space:]]--build$ ]]; then
-            echo "should_build=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "should_build=false" >> "$GITHUB_OUTPUT"
-          fi
-
-          if [[ "$BRANCH" == "beta" ]]; then
-            echo "release_type=beta" >> "$GITHUB_OUTPUT"
-          else
-            echo "release_type=stable" >> "$GITHUB_OUTPUT"
-          fi
-
   build:
-    needs: check-build-flag
-    if: needs.check-build-flag.outputs.should_build == 'true'
     permissions: write-all
     runs-on: ubuntu-latest
-    env:
-      BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
-      CHANNEL_ID: ${{ secrets.CHANNEL_ID }}
+
     steps:
       - uses: actions/checkout@v6
         with:
@@ -80,7 +51,6 @@ jobs:
           if [[ "$BRANCH" == "beta" ]]; then
             RELEASE_PRERELEASE="true"
             RELEASE_TYPE="BETA"
-
             # Check if this base version is already released as stable
             if git rev-parse "$BASE_VERSION" >/dev/null 2>&1; then
               # Already released! Move to next version beta-1
@@ -125,7 +95,6 @@ jobs:
             # master branch logic
             RELEASE_PRERELEASE="false"
             RELEASE_TYPE="STABLE"
-
             if [ -n "$BETA_NUM" ]; then
               # If it was a beta, the stable version is just the base version
               NEW_VERSION_NAME="$BASE_VERSION"
@@ -183,7 +152,7 @@ jobs:
               echo "$GOOGLE_SERVICES_JSON" | base64 --decode > app/google-services.json
               echo "Google Services: Configuration injected from base64 secret"
             fi
-            
+
             # Verify file exists and is not empty
             if [ -s "app/google-services.json" ]; then
               echo "Google Services: app/google-services.json created successfully"
@@ -197,10 +166,11 @@ jobs:
       - name: Build WhatsApp flavor
         run: |
           BUILD_TASKS="assembleWhatsappRelease"
+          
           if [ -s "app/google-services.json" ]; then
             BUILD_TASKS="$BUILD_TASKS uploadCrashlyticsMappingFileWhatsappRelease"
           fi
-          
+
           if [ -n "${{ secrets.KEY_STORE }}" ]; then
             echo "${{ secrets.KEY_STORE }}" | base64 --decode > release.jks
             ./gradlew $BUILD_TASKS -Pminify=true \
@@ -234,45 +204,3 @@ jobs:
             release_artifacts/WaEnhancerX-v${{ env.NEW_VERSION_NAME }}.apk
           tag_name: ${{ env.NEW_VERSION_NAME }}
           prerelease: ${{ env.RELEASE_PRERELEASE }}
-
-      - name: Upload to Xposed Repo release
-        uses: softprops/action-gh-release@v2
-        with:
-          repository: Xposed-Modules-Repo/com.waenhancer
-          token: ${{ secrets.XPOSED_REPO_TOKEN }}
-          name: WaEnhancerX v${{ env.NEW_VERSION_NAME }}
-          body_path: changelog.txt
-          files: |
-            release_artifacts/WaEnhancerX-v${{ env.NEW_VERSION_NAME }}.apk
-          tag_name: ${{ env.NEW_VERSION_NAME }}
-          prerelease: ${{ env.RELEASE_PRERELEASE }}
-
-      - name: Read changelog
-        id: changelog
-        run: |
-          EOF=$(dd if=/dev/urandom bs=15 count=1 status=none | base64 | tr -dc 'a-zA-Z0-9')
-          echo "body<<$EOF" >> "$GITHUB_OUTPUT"
-          sed '/./,$!d' changelog.txt >> "$GITHUB_OUTPUT"
-          echo "" >> "$GITHUB_OUTPUT"
-          echo "$EOF" >> "$GITHUB_OUTPUT"
-
-      - name: Post release to Telegram
-        if: env.RELEASE_PRERELEASE == 'false'
-        env:
-          CHANGELOG_BODY: ${{ steps.changelog.outputs.body }}
-          RELEASE_URL: ${{ steps.release.outputs.url }}
-          BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
-          CHANNEL_ID: ${{ secrets.CHANNEL_ID }}
-        run: |
-          if [ -z "$BOT_TOKEN" ] || [ -z "$CHANNEL_ID" ]; then
-            echo "Telegram credentials missing. Skipping notification."
-            exit 0
-          fi
-          
-          CLEAN_BODY=$(printf '%s' "$CHANGELOG_BODY" | sed '/./,$!d' | cut -c 1-4000)
-          FULL_MESSAGE="$(printf 'STABLE %s\n\n%s\n\nRelease: %s' "${{ env.NEW_VERSION_NAME }}" "$CLEAN_BODY" "$RELEASE_URL")"
-
-          curl -f -X POST "https://api.telegram.org/bot${BOT_TOKEN}/sendMessage" \
-            -d "chat_id=${CHANNEL_ID}" \
-            --data-urlencode "text=$FULL_MESSAGE" \
-            -d "disable_web_page_preview=true"
