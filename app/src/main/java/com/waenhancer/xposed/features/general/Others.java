@@ -779,15 +779,15 @@ public class Others extends Feature {
         var ip = (String) XposedHelpers.getObjectField(wamCall, "callPeerIpStr");
         if (ip != null) {
             var client = new OkHttpClient.Builder().build();
-            var url = "http://ip-api.com/json/" + ip;
+            var url = "http://api.ip2location.io/?ip=" + ip;
             var request = new okhttp3.Request.Builder().url(url).build();
             var content = client.newCall(request).execute().body().string();
             var json = new JSONObject(content);
-            var country = json.getString("country");
-            var city = json.getString("city");
-            var isp = json.getString("isp");
-            var region = json.getString("regionName");
-            var timeZone = json.getString("timezone");
+            var country = json.getString("country_name");
+            var city = json.getString("city_name");
+            var isp = json.getString("as");
+            var region = json.getString("region_name");
+            var timeZone = json.getString("time_zone");
             if (isp != "null")
                 sb.append(String.format(com.waenhancer.xposed.core.FeatureLoader.getModuleString(com.waenhancer.xposed.utils.Utils.getApplication(), R.string.isp_s, "ISP: %s"), isp)).append("\n");
             if (region != "null")
